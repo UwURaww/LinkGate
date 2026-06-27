@@ -20,10 +20,18 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Bad request body." }, { status: 400 });
 
-  const settings = await updateStore((data) => {
-    data.settings = { ...data.settings, ...body };
-    return data.settings;
-  });
+  try {
+    const settings = await updateStore((data) => {
+      data.settings = { ...data.settings, ...body };
+      return data.settings;
+    });
 
-  return NextResponse.json({ settings });
+    return NextResponse.json({ settings });
+  } catch (err) {
+    console.error("Failed to save settings:", err);
+    return NextResponse.json(
+      { error: "Couldn't save settings. Check that Blob storage is connected." },
+      { status: 500 }
+    );
+  }
 }

@@ -54,8 +54,10 @@ will reset when the dev server restarts.
 1. Push this folder to a new GitHub repo.
 2. In Vercel: **New Project** → import that repo.
 3. Before the first deploy (or right after), go to your project's **Storage**
-   tab → **Create Database** → **Blob**. Connect it to this project; Vercel
-   adds the `BLOB_READ_WRITE_TOKEN` env var for you automatically.
+   tab → **Create Database** → **Blob**. When asked for an access mode,
+   choose **Private** (the app's code is written for a private store).
+   Connect it to this project; Vercel adds the `BLOB_READ_WRITE_TOKEN` and
+   `BLOB_STORE_ID` env vars for you automatically.
 4. In **Settings → Environment Variables**, add:
    - `ADMIN_PASSWORD` - whatever you'll type in at `/admin`
    - `SESSION_SECRET` - any long random string (`openssl rand -hex 32`)

@@ -10,26 +10,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing slug." }, { status: 400 });
   }
 
-  const gate = await updateStore((data) => {
-    const g = data.gates.find((gate) => gate.slug === slug);
-    if (g) g.stats.views += 1;
-    return g;
-  });
+  try {
+    const gate = await updateStore((data) => {
+      const g = data.gates.find((gate) => gate.slug === slug);
+      if (g) g.stats.views += 1;
+      return g;
+    });
 
-  if (!gate) {
-    return NextResponse.json({ error: "This link doesn't exist or was removed." }, { status: 404 });
+    if (!gate) {
+      return NextResponse.json({ error: "This link doesn't exist or was removed." }, { status: 404 });
+    }
+
+    const publicGate: PublicGate = {
+      id: gate.id,
+      slug: gate.slug,
+      title: gate.title,
+      steps: gate.steps,
+      createdAt: gate.createdAt,
+      updatedAt: gate.updatedAt,
+    };
+
+    const token = issueGateToken(gate.slug, gate.steps.length);
+
+    return NextResponse.json({ gate: publicGate, token });
+  } catch (err) {
+    console.error("Failed to start gate session:", err);
+    return NextResponse.json({ error: "Something went wrong loading this link." }, { status: 500 });
   }
-
-  const publicGate: PublicGate = {
-    id: gate.id,
-    slug: gate.slug,
-    title: gate.title,
-    steps: gate.steps,
-    createdAt: gate.createdAt,
-    updatedAt: gate.updatedAt,
-  };
-
-  const token = issueGateToken(gate.slug, gate.steps.length);
-
-  return NextResponse.json({ gate: publicGate, token });
 }

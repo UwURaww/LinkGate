@@ -23,24 +23,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Bad request body." }, { status: 400 });
   }
 
-  const updated = await updateStore((data) => {
-    const gate = data.gates.find((g) => g.id === params.id);
-    if (!gate) return null;
+  try {
+    const updated = await updateStore((data) => {
+      const gate = data.gates.find((g) => g.id === params.id);
+      if (!gate) return null;
 
-    if (typeof body.title === "string") gate.title = body.title;
-    if (typeof body.destinationUrl === "string") gate.destinationUrl = body.destinationUrl;
-    if (Array.isArray(body.steps)) gate.steps = body.steps;
-    if (typeof body.slug === "string" && body.slug.trim()) {
-      const newSlug = slugify(body.slug);
-      const taken = data.gates.some((g) => g.slug === newSlug && g.id !== gate.id);
-      if (!taken) gate.slug = newSlug;
-    }
-    gate.updatedAt = new Date().toISOString();
-    return gate;
-  });
+      if (typeof body.title === "string") gate.title = body.title;
+      if (typeof body.destinationUrl === "string") gate.destinationUrl = body.destinationUrl;
+      if (Array.isArray(body.steps)) gate.steps = body.steps;
+      if (typeof body.slug === "string" && body.slug.trim()) {
+        const newSlug = slugify(body.slug);
+        const taken = data.gates.some((g) => g.slug === newSlug && g.id !== gate.id);
+        if (!taken) gate.slug = newSlug;
+      }
+      gate.updatedAt = new Date().toISOString();
+      return gate;
+    });
 
-  if (!updated) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  return NextResponse.json({ gate: updated });
+    if (!updated) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
+    return NextResponse.json({ gate: updated });
+  } catch (err) {
+    console.error("Failed to update gate:", err);
+    return NextResponse.json(
+      { error: "Couldn't save the gate. Check that Blob storage is connected." },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -48,12 +56,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  const removed = await updateStore((data) => {
-    const before = data.gates.length;
-    data.gates = data.gates.filter((g) => g.id !== params.id);
-    return data.gates.length < before;
-  });
+  try {
+    const removed = await updateStore((data) => {
+      const before = data.gates.length;
+      data.gates = data.gates.filter((g) => g.id !== params.id);
+      return data.gates.length < before;
+    });
 
-  if (!removed) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  return NextResponse.json({ ok: true });
+    if (!removed) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to delete gate:", err);
+    return NextResponse.json(
+      { error: "Couldn't delete the gate. Check that Blob storage is connected." },
+      { status: 500 }
+    );
+  }
 }

@@ -19,24 +19,29 @@ export async function POST(req: NextRequest) {
   let webhookUrl: string | undefined;
   let gateTitle = "";
 
-  await updateStore((data) => {
-    const gate = data.gates.find((g) => g.slug === slug);
-    if (!gate) return;
+  try {
+    await updateStore((data) => {
+      const gate = data.gates.find((g) => g.slug === slug);
+      if (!gate) return;
 
-    // The token was issued for a specific number of steps. If the gate was
-    // edited since, the token no longer matches and we bail out.
-    if (gate.steps.length !== verified.stepCount) return;
+      // The token was issued for a specific number of steps. If the gate was
+      // edited since, the token no longer matches and we bail out.
+      if (gate.steps.length !== verified.stepCount) return;
 
-    const requiredIds = gate.steps.filter((s) => !s.skippable).map((s) => s.id);
-    const completedSet = new Set(completedStepIds);
-    const allRequiredDone = requiredIds.every((id) => completedSet.has(id));
-    if (!allRequiredDone) return;
+      const requiredIds = gate.steps.filter((s) => !s.skippable).map((s) => s.id);
+      const completedSet = new Set(completedStepIds);
+      const allRequiredDone = requiredIds.every((id) => completedSet.has(id));
+      if (!allRequiredDone) return;
 
-    gate.stats.completions += 1;
-    destinationUrl = gate.destinationUrl;
-    gateTitle = gate.title;
-    webhookUrl = data.settings.discordWebhookUrl;
-  });
+      gate.stats.completions += 1;
+      destinationUrl = gate.destinationUrl;
+      gateTitle = gate.title;
+      webhookUrl = data.settings.discordWebhookUrl;
+    });
+  } catch (err) {
+    console.error("Failed to complete gate:", err);
+    return NextResponse.json({ error: "Something went wrong finishing this link." }, { status: 500 });
+  }
 
   if (!destinationUrl) {
     return NextResponse.json({ error: "Couldn't verify the steps were completed." }, { status: 400 });

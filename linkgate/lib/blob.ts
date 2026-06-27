@@ -1,4 +1,4 @@
-import { put, head } from "@vercel/blob";
+import { put, get } from "@vercel/blob";
 import { StoreData, defaultSettings } from "./types";
 
 // A single JSON file holds every gate + the site settings. Fine for a
@@ -11,13 +11,15 @@ let memoryFallback: StoreData | null = null;
 
 export async function readStore(): Promise<StoreData> {
   try {
-    const info = await head(STORE_PATH);
-    const res = await fetch(info.url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Blob fetch failed: ${res.status}`);
-    const data = (await res.json()) as StoreData;
-    return data;
+    const result = await get(STORE_PATH, { access: "private" });
+    if (!result) {
+      // No store yet (first run) - start fresh.
+      return memoryFallback ?? { gates: [], settings: defaultSettings() };
+    }
+    const text = await new Response(result.stream).text();
+    return JSON.parse(text) as StoreData;
   } catch {
-    // No store yet (first run) or blob not configured - start fresh.
+    // Blob not configured yet, or some other read error - don't 500 the page.
     return memoryFallback ?? { gates: [], settings: defaultSettings() };
   }
 }
@@ -25,7 +27,7 @@ export async function readStore(): Promise<StoreData> {
 export async function writeStore(data: StoreData): Promise<void> {
   memoryFallback = data;
   await put(STORE_PATH, JSON.stringify(data, null, 2), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",

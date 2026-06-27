@@ -38,14 +38,22 @@ export async function POST(req: NextRequest) {
     updatedAt: now,
   };
 
-  const result = await updateStore((data) => {
-    const slugTaken = data.gates.some((g) => g.slug === gate.slug);
-    if (slugTaken) {
-      gate.slug = `${gate.slug}-${randomSlug().slice(0, 4)}`;
-    }
-    data.gates.push(gate);
-    return gate;
-  });
+  try {
+    const result = await updateStore((data) => {
+      const slugTaken = data.gates.some((g) => g.slug === gate.slug);
+      if (slugTaken) {
+        gate.slug = `${gate.slug}-${randomSlug().slice(0, 4)}`;
+      }
+      data.gates.push(gate);
+      return gate;
+    });
 
-  return NextResponse.json({ gate: result }, { status: 201 });
+    return NextResponse.json({ gate: result }, { status: 201 });
+  } catch (err) {
+    console.error("Failed to save gate:", err);
+    return NextResponse.json(
+      { error: "Couldn't save the gate. Check that Blob storage is connected." },
+      { status: 500 }
+    );
+  }
 }
