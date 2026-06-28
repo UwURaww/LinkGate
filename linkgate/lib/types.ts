@@ -1,4 +1,17 @@
-export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "custom_script";
+export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "social" | "custom_script";
+
+export type IconKey =
+  | "none"
+  | "link"
+  | "play"
+  | "heart"
+  | "star"
+  | "userPlus"
+  | "gift"
+  | "megaphone"
+  | "clock"
+  | "info"
+  | "message";
 
 export interface GateStep {
   id: string;
@@ -6,6 +19,7 @@ export interface GateStep {
   title: string;
   description?: string;
   skippable?: boolean;
+  icon?: IconKey;
 
   // type: "timer"
   seconds?: number;
@@ -20,6 +34,11 @@ export interface GateStep {
   // type: "tip"
   tipUrl?: string;
   tipLabel?: string;
+
+  // type: "social" - a generic "follow / subscribe / like" step for any
+  // platform (YouTube, Instagram, TikTok, X, etc.)
+  socialUrl?: string;
+  socialActionLabel?: string;
 
   // type: "custom_script" - for the user's own monetization script
   scriptUrl?: string;
@@ -49,6 +68,8 @@ export interface SiteSettings {
   accentColor: string;
   backgroundColor: string;
   logoUrl?: string;
+  faviconUrl?: string;
+  cornerStyle?: "rounded" | "sharp";
   discordWebhookUrl?: string;
 }
 
@@ -64,6 +85,8 @@ export function defaultSettings(): SiteSettings {
     accentColor: "#E8A33D",
     backgroundColor: "#0E1013",
     logoUrl: "",
+    faviconUrl: "",
+    cornerStyle: "rounded",
     discordWebhookUrl: "",
   };
 }

@@ -14,9 +14,9 @@ export default function DashboardLayout({
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="admin-shell">
       <AdminNav />
-      <main style={{ flex: 1, padding: "2rem", maxWidth: 920 }}>{children}</main>
+      <main className="admin-main">{children}</main>
     </div>
   );
 }

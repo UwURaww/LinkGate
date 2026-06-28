@@ -30,7 +30,7 @@ export default function GatesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+      <div className="page-header">
         <h1 style={{ fontSize: "1.4rem" }}>Gates</h1>
         <Link href="/admin/gates/new" className="btn btn-primary">+ New gate</Link>
       </div>
@@ -43,15 +43,15 @@ export default function GatesPage() {
       )}
 
       {gates?.map((gate) => (
-        <div key={gate.id} className="panel" style={{ padding: "1.25rem", marginBottom: "0.85rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
-          <div>
+        <div key={gate.id} className="panel gate-row">
+          <div className="gate-row-info">
             <h3 style={{ fontSize: "1rem", marginBottom: "0.3rem" }}>{gate.title}</h3>
             <p className="mono" style={{ fontSize: "0.8rem" }}>/g/{gate.slug}</p>
             <p style={{ fontSize: "0.8rem", marginTop: "0.3rem" }}>
               {gate.stats.views} views · {gate.stats.completions} completions
             </p>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+          <div className="gate-row-actions">
             <button className="btn" onClick={() => copyLink(gate)}>
               {copiedId === gate.id ? "Copied" : "Copy link"}
             </button>

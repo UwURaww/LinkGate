@@ -19,42 +19,23 @@ export default function AdminNav() {
   }
 
   return (
-    <aside
-      style={{
-        width: 200,
-        borderRight: "1px solid var(--border)",
-        padding: "1.5rem 1rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.25rem",
-      }}
-    >
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, padding: "0 0.6rem 1.5rem" }}>
-        Checkpoint
+    <aside className="admin-nav">
+      <div className="admin-nav-brand">Checkpoint</div>
+      <div className="admin-nav-links">
+        {links.map((link) => {
+          const active = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`admin-nav-link ${active ? "active" : ""}`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
       </div>
-      {links.map((link) => {
-        const active = pathname === link.href;
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            style={{
-              padding: "0.55rem 0.6rem",
-              borderRadius: 8,
-              color: active ? "var(--text)" : "var(--text-muted)",
-              background: active ? "var(--panel-2)" : "transparent",
-              fontSize: "0.9rem",
-            }}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-      <button
-        onClick={handleLogout}
-        className="btn btn-ghost"
-        style={{ marginTop: "auto", justifyContent: "flex-start" }}
-      >
+      <button onClick={handleLogout} className="btn btn-ghost admin-nav-logout">
         Sign out
       </button>
     </aside>

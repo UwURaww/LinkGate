@@ -36,7 +36,7 @@ export default function SettingsPage() {
     <div>
       <h1 style={{ fontSize: "1.4rem", marginBottom: "1.5rem" }}>Settings</h1>
 
-      <form onSubmit={handleSave} className="panel" style={{ padding: "1.5rem", maxWidth: 480 }}>
+      <form onSubmit={handleSave} className="panel settings-form">
         <div className="field">
           <label className="field-label">Site name</label>
           <input className="input" value={settings.siteName} onChange={(e) => field("siteName", e.target.value)} />
@@ -48,31 +48,46 @@ export default function SettingsPage() {
         </div>
 
         <div className="field">
-          <label className="field-label">Logo URL (optional)</label>
+          <label className="field-label">Logo URL (shown above the steps on every gate)</label>
           <input className="input" value={settings.logoUrl || ""} onChange={(e) => field("logoUrl", e.target.value)} />
         </div>
 
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <div className="field" style={{ flex: 1 }}>
+        <div className="field">
+          <label className="field-label">Favicon URL (the small browser-tab icon, optional)</label>
+          <input className="input" value={settings.faviconUrl || ""} onChange={(e) => field("faviconUrl", e.target.value)} />
+        </div>
+
+        <div className="field-row">
+          <div className="field field-grow">
             <label className="field-label">Accent color</label>
             <input
               type="color"
-              className="input"
-              style={{ height: 42, padding: "0.25rem" }}
+              className="input color-input"
               value={settings.accentColor}
               onChange={(e) => field("accentColor", e.target.value)}
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
+          <div className="field field-grow">
             <label className="field-label">Background color</label>
             <input
               type="color"
-              className="input"
-              style={{ height: 42, padding: "0.25rem" }}
+              className="input color-input"
               value={settings.backgroundColor}
               onChange={(e) => field("backgroundColor", e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="field">
+          <label className="field-label">Corner style</label>
+          <select
+            className="input"
+            value={settings.cornerStyle || "rounded"}
+            onChange={(e) => field("cornerStyle", e.target.value as SiteSettings["cornerStyle"])}
+          >
+            <option value="rounded">Rounded</option>
+            <option value="sharp">Sharp</option>
+          </select>
         </div>
 
         <div className="field">

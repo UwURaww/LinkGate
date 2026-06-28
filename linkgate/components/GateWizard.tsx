@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PublicGate, SiteSettings } from "@/lib/types";
+import { Icon } from "./icons";
 import CustomScriptSlot from "./CustomScriptSlot";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
@@ -14,7 +15,7 @@ export default function GateWizard({ slug }: { slug: string }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [adVisited, setAdVisited] = useState(false);
+  const [actionTaken, setActionTaken] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState("");
 
@@ -65,19 +66,21 @@ export default function GateWizard({ slug }: { slug: string }) {
   }, [currentStep]);
 
   useEffect(() => {
-    setAdVisited(false);
+    setActionTaken(false);
   }, [stepIndex]);
 
   const accent = settings?.accentColor || "#e8a33d";
   const background = settings?.backgroundColor || "#0e1013";
+  const radius = settings?.cornerStyle === "sharp" ? "2px" : "10px";
 
   const themeVars = useMemo(
     () =>
       ({
         "--accent": accent,
         "--bg": background,
+        "--radius": radius,
       }) as React.CSSProperties,
-    [accent, background]
+    [accent, background, radius]
   );
 
   function markComplete(stepId: string) {
@@ -93,7 +96,6 @@ export default function GateWizard({ slug }: { slug: string }) {
       return;
     }
 
-    // Last step: finalize with the server and get the real link.
     setFinishing(true);
     setFinishError("");
     try {
@@ -141,9 +143,16 @@ export default function GateWizard({ slug }: { slug: string }) {
     );
   }
 
+  const requiresAction = ["ad", "discord", "tip", "social"].includes(currentStep.type);
+
   return (
-    <div style={{ ...themeVars, minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
-      <div className="panel" style={{ width: "100%", maxWidth: 440, padding: "2rem" }}>
+    <div style={{ ...themeVars }} className="gate-screen">
+      <div className="panel gate-card">
+        {settings?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={settings.logoUrl} alt="" className="gate-logo" />
+        )}
+
         <div className="checkpoint-rail">
           {gate.steps.map((s, i) => (
             <div
@@ -156,7 +165,12 @@ export default function GateWizard({ slug }: { slug: string }) {
         <p className="mono" style={{ fontSize: "0.75rem", marginBottom: "0.4rem" }}>
           STEP {stepIndex + 1} OF {gate.steps.length}
         </p>
-        <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>{currentStep.title}</h1>
+
+        <div className="gate-step-title">
+          <Icon name={currentStep.icon} size={20} />
+          <h1 style={{ fontSize: "1.25rem" }}>{currentStep.title}</h1>
+        </div>
+
         {currentStep.description && (
           <p style={{ marginBottom: "1.25rem" }}>{currentStep.description}</p>
         )}
@@ -175,10 +189,10 @@ export default function GateWizard({ slug }: { slug: string }) {
               href={currentStep.adUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary"
-              style={{ width: "100%" }}
-              onClick={() => setAdVisited(true)}
+              className="btn btn-primary btn-icon"
+              onClick={() => setActionTaken(true)}
             >
+              <Icon name={currentStep.icon} size={16} />
               {currentStep.adButtonLabel || "Visit sponsor"}
             </a>
           )}
@@ -188,10 +202,10 @@ export default function GateWizard({ slug }: { slug: string }) {
               href={currentStep.discordInvite || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary"
-              style={{ width: "100%" }}
-              onClick={() => setAdVisited(true)}
+              className="btn btn-primary btn-icon"
+              onClick={() => setActionTaken(true)}
             >
+              <Icon name={currentStep.icon} size={16} />
               Join the Discord
             </a>
           )}
@@ -201,11 +215,24 @@ export default function GateWizard({ slug }: { slug: string }) {
               href={currentStep.tipUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary"
-              style={{ width: "100%" }}
-              onClick={() => setAdVisited(true)}
+              className="btn btn-primary btn-icon"
+              onClick={() => setActionTaken(true)}
             >
+              <Icon name={currentStep.icon} size={16} />
               {currentStep.tipLabel || "Leave a tip"}
+            </a>
+          )}
+
+          {currentStep.type === "social" && (
+            <a
+              href={currentStep.socialUrl || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-icon"
+              onClick={() => setActionTaken(true)}
+            >
+              <Icon name={currentStep.icon} size={16} />
+              {currentStep.socialActionLabel || "Follow"}
             </a>
           )}
 
@@ -217,12 +244,11 @@ export default function GateWizard({ slug }: { slug: string }) {
         {finishError && <p style={{ color: "var(--danger)", marginBottom: "1rem" }}>{finishError}</p>}
 
         <button
-          className="btn btn-primary"
-          style={{ width: "100%" }}
+          className="btn btn-primary gate-continue"
           disabled={
             finishing ||
             (currentStep.type === "timer" && secondsLeft > 0) ||
-            (["ad", "discord", "tip"].includes(currentStep.type) && !adVisited && !currentStep.skippable)
+            (requiresAction && !actionTaken && !currentStep.skippable)
           }
           onClick={() => handleAdvance(currentStep.id)}
         >
@@ -230,7 +256,7 @@ export default function GateWizard({ slug }: { slug: string }) {
             ? "Finishing up..."
             : stepIndex + 1 === gate.steps.length
               ? "Get my link"
-              : currentStep.skippable
+              : currentStep.skippable && !actionTaken
                 ? "Skip"
                 : "Continue"}
         </button>
@@ -246,19 +272,13 @@ function Centered({
   children: React.ReactNode;
   settings: SiteSettings | null;
 }) {
+  const bgVar = {
+    "--bg": settings?.backgroundColor || "#0e1013",
+  } as React.CSSProperties;
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: settings?.backgroundColor || "#0e1013",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1.5rem",
-        textAlign: "center",
-      }}
-    >
-      <div className="panel" style={{ padding: "2rem", maxWidth: 380 }}>{children}</div>
+    <div className="gate-screen" style={{ ...bgVar, textAlign: "center" }}>
+      <div className="panel gate-card" style={{ maxWidth: 380 }}>{children}</div>
     </div>
   );
 }

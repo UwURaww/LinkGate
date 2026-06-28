@@ -1,6 +1,7 @@
 "use client";
 
-import { GateStep, StepType } from "@/lib/types";
+import { GateStep, StepType, IconKey } from "@/lib/types";
+import { Icon, ICON_LABELS } from "./icons";
 
 const STEP_LABELS: Record<StepType, string> = {
   info: "Info message",
@@ -8,32 +9,77 @@ const STEP_LABELS: Record<StepType, string> = {
   ad: "Ad / affiliate link",
   discord: "Join Discord",
   tip: "Tip to support",
+  social: "Follow / subscribe / like",
   custom_script: "Your own script (.js)",
 };
 
-function blankStep(type: StepType): GateStep {
-  const id = `step_${Math.random().toString(36).slice(2, 9)}`;
+const ICON_KEYS: IconKey[] = [
+  "none",
+  "link",
+  "play",
+  "heart",
+  "star",
+  "userPlus",
+  "gift",
+  "megaphone",
+  "clock",
+  "info",
+  "message",
+];
+
+function defaultIconFor(type: StepType): IconKey {
   switch (type) {
     case "timer":
-      return { id, type, title: "Hang tight", description: "Your link unlocks in a moment.", seconds: 8 };
+      return "clock";
     case "ad":
-      return { id, type, title: "Check out our sponsor", adUrl: "", adButtonLabel: "Visit sponsor" };
+      return "megaphone";
     case "discord":
-      return { id, type, title: "Join the Discord", discordInvite: "" };
+      return "message";
+    case "tip":
+      return "gift";
+    case "social":
+      return "userPlus";
+    case "info":
+      return "info";
+    default:
+      return "none";
+  }
+}
+
+function blankStep(type: StepType): GateStep {
+  const id = `step_${Math.random().toString(36).slice(2, 9)}`;
+  const icon = defaultIconFor(type);
+  switch (type) {
+    case "timer":
+      return { id, type, icon, title: "Hang tight", description: "Your link unlocks in a moment.", seconds: 8 };
+    case "ad":
+      return { id, type, icon, title: "Check out our sponsor", adUrl: "", adButtonLabel: "Visit sponsor" };
+    case "discord":
+      return { id, type, icon, title: "Join the Discord", discordInvite: "" };
     case "tip":
       return {
         id,
         type,
+        icon,
         title: "Enjoying the tool?",
         description: "Totally optional - skip if you'd rather not.",
         tipUrl: "",
         tipLabel: "Leave a tip",
         skippable: true,
       };
+    case "social":
+      return {
+        id,
+        type,
+        icon,
+        title: "Follow to continue",
+        socialUrl: "",
+        socialActionLabel: "Follow",
+      };
     case "custom_script":
-      return { id, type, title: "One sec...", scriptUrl: "" };
+      return { id, type, icon, title: "One sec...", scriptUrl: "" };
     default:
-      return { id, type: "info", title: "Welcome", description: "" };
+      return { id, type: "info", icon, title: "Welcome", description: "" };
   }
 }
 
@@ -69,23 +115,42 @@ export default function StepBuilder({
   return (
     <div>
       {steps.map((step, i) => (
-        <div key={step.id} className="panel" style={{ padding: "1.25rem", marginBottom: "0.85rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
-            <span className="badge">{STEP_LABELS[step.type]}</span>
-            <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div key={step.id} className="panel step-card">
+          <div className="step-card-header">
+            <span className="badge">
+              <Icon name={step.icon} size={14} />
+              {STEP_LABELS[step.type]}
+            </span>
+            <div className="step-card-actions">
               <button type="button" className="btn btn-ghost" onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
               <button type="button" className="btn btn-ghost" onClick={() => move(i, 1)} disabled={i === steps.length - 1}>↓</button>
               <button type="button" className="btn btn-danger" onClick={() => remove(i)}>Remove</button>
             </div>
           </div>
 
-          <div className="field">
-            <label className="field-label">Title shown to visitors</label>
-            <input
-              className="input"
-              value={step.title}
-              onChange={(e) => update(i, { title: e.target.value })}
-            />
+          <div className="field-row">
+            <div className="field field-grow">
+              <label className="field-label">Title shown to visitors</label>
+              <input
+                className="input"
+                value={step.title}
+                onChange={(e) => update(i, { title: e.target.value })}
+              />
+            </div>
+            <div className="field field-icon-col">
+              <label className="field-label">Icon</label>
+              <select
+                className="input"
+                value={step.icon || "none"}
+                onChange={(e) => update(i, { icon: e.target.value as IconKey })}
+              >
+                {ICON_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {key === "none" ? "No icon" : ICON_LABELS[key as Exclude<IconKey, "none">]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {(step.type === "info" || step.type === "timer" || step.type === "tip") && (
@@ -169,6 +234,29 @@ export default function StepBuilder({
             </>
           )}
 
+          {step.type === "social" && (
+            <>
+              <div className="field">
+                <label className="field-label">Profile / post / channel link</label>
+                <input
+                  className="input"
+                  placeholder="https://youtube.com/@yourchannel"
+                  value={step.socialUrl || ""}
+                  onChange={(e) => update(i, { socialUrl: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label">Button text (e.g. "Subscribe on YouTube")</label>
+                <input
+                  className="input"
+                  placeholder="Subscribe on YouTube"
+                  value={step.socialActionLabel || ""}
+                  onChange={(e) => update(i, { socialActionLabel: e.target.value })}
+                />
+              </div>
+            </>
+          )}
+
           {step.type === "custom_script" && (
             <>
               <div className="field">
@@ -196,7 +284,7 @@ export default function StepBuilder({
             </>
           )}
 
-          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          <label className="checkbox-row">
             <input
               type="checkbox"
               checked={!!step.skippable}
@@ -207,7 +295,7 @@ export default function StepBuilder({
         </div>
       ))}
 
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+      <div className="add-step-row">
         {(Object.keys(STEP_LABELS) as StepType[]).map((type) => (
           <button key={type} type="button" className="btn" onClick={() => add(type)}>
             + {STEP_LABELS[type]}
