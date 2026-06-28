@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PublicGate, SiteSettings } from "@/lib/types";
 import { Icon } from "./icons";
 import CustomScriptSlot from "./CustomScriptSlot";
+import BannerMedia from "./BannerMedia";
+import BackgroundFX from "./BackgroundFX";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
@@ -16,8 +18,10 @@ export default function GateWizard({ slug }: { slug: string }) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [actionTaken, setActionTaken] = useState(false);
+  const [waitLeft, setWaitLeft] = useState(0);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -36,6 +40,8 @@ export default function GateWizard({ slug }: { slug: string }) {
           return;
         }
         if (!sessionRes.ok) {
+          const errBody = await sessionRes.json().catch(() => ({}));
+          setLoadError(errBody.error || "");
           setState("error");
           return;
         }
@@ -67,11 +73,19 @@ export default function GateWizard({ slug }: { slug: string }) {
 
   useEffect(() => {
     setActionTaken(false);
+    setWaitLeft(0);
   }, [stepIndex]);
+
+  useEffect(() => {
+    if (waitLeft <= 0) return;
+    const id = setTimeout(() => setWaitLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [waitLeft]);
 
   const accent = settings?.accentColor || "#e8a33d";
   const background = settings?.backgroundColor || "#0e1013";
   const radius = settings?.cornerStyle === "sharp" ? "2px" : "10px";
+  const bgTheme = gate?.backgroundTheme || settings?.backgroundTheme || "solid";
 
   const themeVars = useMemo(
     () =>
@@ -85,6 +99,13 @@ export default function GateWizard({ slug }: { slug: string }) {
 
   function markComplete(stepId: string) {
     setCompletedIds((prev) => new Set(prev).add(stepId));
+  }
+
+  function handleAction() {
+    setActionTaken(true);
+    if (currentStep?.postActionWaitSeconds) {
+      setWaitLeft(currentStep.postActionWaitSeconds);
+    }
   }
 
   async function handleAdvance(stepId: string) {
@@ -138,7 +159,7 @@ export default function GateWizard({ slug }: { slug: string }) {
     return (
       <Centered settings={settings}>
         <h1 style={{ fontSize: "1.3rem", marginBottom: "0.5rem" }}>Something went wrong</h1>
-        <p>Refresh the page to try again.</p>
+        <p>{loadError || "Refresh the page to try again."}</p>
       </Centered>
     );
   }
@@ -147,7 +168,10 @@ export default function GateWizard({ slug }: { slug: string }) {
 
   return (
     <div style={{ ...themeVars }} className="gate-screen">
+      <BackgroundFX theme={bgTheme} accent={accent} background={background} />
       <div className="panel gate-card">
+        <BannerMedia url={gate.bannerUrl} type={gate.bannerType} />
+
         {settings?.logoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={settings.logoUrl} alt="" className="gate-logo" />
@@ -190,7 +214,7 @@ export default function GateWizard({ slug }: { slug: string }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary btn-icon"
-              onClick={() => setActionTaken(true)}
+              onClick={handleAction}
             >
               <Icon name={currentStep.icon} size={16} />
               {currentStep.adButtonLabel || "Visit sponsor"}
@@ -203,7 +227,7 @@ export default function GateWizard({ slug }: { slug: string }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary btn-icon"
-              onClick={() => setActionTaken(true)}
+              onClick={handleAction}
             >
               <Icon name={currentStep.icon} size={16} />
               Join the Discord
@@ -216,7 +240,7 @@ export default function GateWizard({ slug }: { slug: string }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary btn-icon"
-              onClick={() => setActionTaken(true)}
+              onClick={handleAction}
             >
               <Icon name={currentStep.icon} size={16} />
               {currentStep.tipLabel || "Leave a tip"}
@@ -229,7 +253,7 @@ export default function GateWizard({ slug }: { slug: string }) {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary btn-icon"
-              onClick={() => setActionTaken(true)}
+              onClick={handleAction}
             >
               <Icon name={currentStep.icon} size={16} />
               {currentStep.socialActionLabel || "Follow"}
@@ -238,6 +262,12 @@ export default function GateWizard({ slug }: { slug: string }) {
 
           {currentStep.type === "custom_script" && (
             <CustomScriptSlot scriptUrl={currentStep.scriptUrl} scriptInline={currentStep.scriptInline} />
+          )}
+
+          {requiresAction && actionTaken && waitLeft > 0 && (
+            <p className="mono" style={{ fontSize: "0.8rem", marginTop: "0.6rem", color: "var(--text-muted)" }}>
+              You can continue in {waitLeft}s
+            </p>
           )}
         </div>
 
@@ -248,17 +278,20 @@ export default function GateWizard({ slug }: { slug: string }) {
           disabled={
             finishing ||
             (currentStep.type === "timer" && secondsLeft > 0) ||
-            (requiresAction && !actionTaken && !currentStep.skippable)
+            (requiresAction && !actionTaken && !currentStep.skippable) ||
+            waitLeft > 0
           }
           onClick={() => handleAdvance(currentStep.id)}
         >
           {finishing
             ? "Finishing up..."
-            : stepIndex + 1 === gate.steps.length
-              ? "Get my link"
-              : currentStep.skippable && !actionTaken
-                ? "Skip"
-                : "Continue"}
+            : waitLeft > 0
+              ? `Wait ${waitLeft}s`
+              : stepIndex + 1 === gate.steps.length
+                ? "Get my link"
+                : currentStep.skippable && !actionTaken
+                  ? "Skip"
+                  : "Continue"}
         </button>
       </div>
     </div>

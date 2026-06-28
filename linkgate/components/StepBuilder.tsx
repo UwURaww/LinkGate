@@ -1,6 +1,6 @@
 "use client";
 
-import { GateStep, StepType, IconKey } from "@/lib/types";
+import { GateStep, StepType, IconKey, QuickLink } from "@/lib/types";
 import { Icon, ICON_LABELS } from "./icons";
 
 const STEP_LABELS: Record<StepType, string> = {
@@ -83,12 +83,40 @@ function blankStep(type: StepType): GateStep {
   }
 }
 
+function QuickLinkPicker({
+  quickLinks,
+  onPick,
+}: {
+  quickLinks: QuickLink[];
+  onPick: (url: string) => void;
+}) {
+  if (!quickLinks.length) return null;
+  return (
+    <select
+      className="input quick-link-select"
+      value=""
+      onChange={(e) => {
+        if (e.target.value) onPick(e.target.value);
+      }}
+    >
+      <option value="">Insert a saved link...</option>
+      {quickLinks.map((q) => (
+        <option key={q.id} value={q.url}>
+          {q.label || q.url}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export default function StepBuilder({
   steps,
   onChange,
+  quickLinks = [],
 }: {
   steps: GateStep[];
   onChange: (steps: GateStep[]) => void;
+  quickLinks?: QuickLink[];
 }) {
   function update(index: number, patch: Partial<GateStep>) {
     const next = steps.slice();
@@ -188,6 +216,7 @@ export default function StepBuilder({
                   value={step.adUrl || ""}
                   onChange={(e) => update(i, { adUrl: e.target.value })}
                 />
+                <QuickLinkPicker quickLinks={quickLinks} onPick={(url) => update(i, { adUrl: url })} />
               </div>
               <div className="field">
                 <label className="field-label">Button text</label>
@@ -209,6 +238,7 @@ export default function StepBuilder({
                 value={step.discordInvite || ""}
                 onChange={(e) => update(i, { discordInvite: e.target.value })}
               />
+              <QuickLinkPicker quickLinks={quickLinks} onPick={(url) => update(i, { discordInvite: url })} />
             </div>
           )}
 
@@ -222,6 +252,7 @@ export default function StepBuilder({
                   value={step.tipUrl || ""}
                   onChange={(e) => update(i, { tipUrl: e.target.value })}
                 />
+                <QuickLinkPicker quickLinks={quickLinks} onPick={(url) => update(i, { tipUrl: url })} />
               </div>
               <div className="field">
                 <label className="field-label">Button text</label>
@@ -244,6 +275,7 @@ export default function StepBuilder({
                   value={step.socialUrl || ""}
                   onChange={(e) => update(i, { socialUrl: e.target.value })}
                 />
+                <QuickLinkPicker quickLinks={quickLinks} onPick={(url) => update(i, { socialUrl: url })} />
               </div>
               <div className="field">
                 <label className="field-label">Button text (e.g. "Subscribe on YouTube")</label>
@@ -282,6 +314,27 @@ export default function StepBuilder({
                 networks you trust.
               </p>
             </>
+          )}
+
+          {(step.type === "ad" || step.type === "discord" || step.type === "tip" || step.type === "social") && (
+            <div className="field">
+              <label className="field-label">
+                Require a short wait after clicking (seconds, optional)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={60}
+                className="input"
+                placeholder="0 = no wait"
+                value={step.postActionWaitSeconds ?? ""}
+                onChange={(e) =>
+                  update(i, {
+                    postActionWaitSeconds: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
+            </div>
           )}
 
           <label className="checkbox-row">

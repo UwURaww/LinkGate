@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const TOKEN_MAX_AGE_MS = 1000 * 60 * 30; // 30 minutes to finish a gate
+export const TOKEN_MAX_AGE_MS = 1000 * 60 * 30; // 30 minutes to finish a gate
 
 function secret(): string {
   return process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "dev-secret-change-me";

@@ -1,5 +1,5 @@
 import { put, get } from "@vercel/blob";
-import { StoreData, defaultSettings } from "./types";
+import { StoreData, defaultSettings, defaultSecurity } from "./types";
 
 // A single JSON file holds every gate + the site settings. Fine for a
 // personal/small-traffic tool. If you outgrow it (lots of concurrent writes),
@@ -9,18 +9,29 @@ const STORE_PATH = "linkgate-store.json";
 
 let memoryFallback: StoreData | null = null;
 
+function withDefaults(data: Partial<StoreData> | null | undefined): StoreData {
+  return {
+    gates: data?.gates ?? [],
+    settings: { ...defaultSettings(), ...(data?.settings ?? {}) },
+    security: { ...defaultSecurity(), ...(data?.security ?? {}) },
+  };
+}
+
 export async function readStore(): Promise<StoreData> {
   try {
     const result = await get(STORE_PATH, { access: "private" });
     if (!result) {
       // No store yet (first run) - start fresh.
-      return memoryFallback ?? { gates: [], settings: defaultSettings() };
+      return memoryFallback ?? withDefaults(null);
     }
     const text = await new Response(result.stream).text();
-    return JSON.parse(text) as StoreData;
+    const parsed = JSON.parse(text) as Partial<StoreData>;
+    // withDefaults backfills any fields added in later versions of this app
+    // (e.g. an older store created before "security" or "quickLinks" existed).
+    return withDefaults(parsed);
   } catch {
     // Blob not configured yet, or some other read error - don't 500 the page.
-    return memoryFallback ?? { gates: [], settings: defaultSettings() };
+    return memoryFallback ?? withDefaults(null);
   }
 }
 

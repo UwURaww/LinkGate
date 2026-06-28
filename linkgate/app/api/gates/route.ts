@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
     stats: { views: 0, completions: 0 },
     createdAt: now,
     updatedAt: now,
+    bannerUrl: typeof body.bannerUrl === "string" ? body.bannerUrl : undefined,
+    bannerType: ["image", "video", "youtube"].includes(body.bannerType) ? body.bannerType : undefined,
+    backgroundTheme: ["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)
+      ? body.backgroundTheme
+      : undefined,
   };
 
   try {

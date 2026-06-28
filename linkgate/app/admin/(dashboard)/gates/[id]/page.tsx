@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import GateForm, { GateFormValue } from "@/components/GateForm";
-import { Gate } from "@/lib/types";
+import { Gate, QuickLink } from "@/lib/types";
 
 export default function EditGatePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [gate, setGate] = useState<Gate | null>(null);
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -20,6 +21,10 @@ export default function EditGatePage({ params }: { params: { id: string } }) {
         return r.json();
       })
       .then((d) => d && setGate(d.gate));
+
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => setQuickLinks(d.settings?.quickLinks || []));
   }, [params.id]);
 
   async function handleSubmit(value: GateFormValue) {
@@ -39,7 +44,7 @@ export default function EditGatePage({ params }: { params: { id: string } }) {
   return (
     <div>
       <h1 style={{ fontSize: "1.4rem", marginBottom: "1.5rem" }}>Edit gate</h1>
-      <GateForm initial={gate} submitLabel="Save changes" onSubmit={handleSubmit} />
+      <GateForm initial={gate} submitLabel="Save changes" quickLinks={quickLinks} onSubmit={handleSubmit} />
     </div>
   );
 }

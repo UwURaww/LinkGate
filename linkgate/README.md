@@ -84,8 +84,25 @@ controlling the page could do.
 
 ## Customizing the look
 
-`/admin/settings` covers site name, tagline, logo, accent color, and
-background color live, no code edits needed. For deeper changes (fonts,
-layout, the step types themselves), it's a normal Next.js app - edit
-`app/globals.css` for the design tokens or `components/GateWizard.tsx` for the
-flow itself.
+`/admin/settings` covers site name, tagline, logo, favicon, accent color,
+background color, corner style, and a default background theme (Solid,
+Starfield, Matrix rain, Energy grid, or Nebula) - no code edits needed. Each
+gate can also have its own banner (image, direct video URL, or YouTube link)
+and its own background theme override, via the gate editor.
+
+Saved links (your YouTube channel, Discord server, Ko-fi, etc.) live in
+Settings too - add one once, then insert it into any step with one click
+instead of retyping it.
+
+## Anti-bypass hardening
+
+- Tokens are one-time-use: once a gate is completed, that exact token can't
+  be replayed.
+- Repeated invalid completion attempts from the same IP (forged tokens,
+  claiming steps were done when they weren't) trigger a temporary lockout for
+  that IP. Normal visitors going through the wizard never trigger this.
+- The "wait after clicking" option on ad/social/tip/Discord steps is an
+  honest, visible timer ("Continue in 18s") - not a fake "verifying..." state.
+  Nothing here can actually verify a visitor watched an ad or followed a
+  link; claiming otherwise would just be lying to them, so the UI never does.
+

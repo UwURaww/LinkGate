@@ -252,6 +252,8 @@ textarea.input {
 /* ---------- public gate page ---------- */
 
 .gate-screen {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   background: var(--bg);
   display: flex;
@@ -261,9 +263,27 @@ textarea.input {
 }
 
 .gate-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 440px;
   padding: 2rem;
+}
+
+.gate-banner {
+  margin: -2rem -2rem 1.5rem;
+  overflow: hidden;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.gate-banner img,
+.gate-banner-media video,
+.gate-banner-media iframe {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  border: none;
 }
 
 .gate-logo {
@@ -298,8 +318,131 @@ textarea.input {
 
   .gate-card {
     padding: 1.4rem;
-    border-radius: 8px;
   }
+
+  .gate-banner {
+    margin: -1.4rem -1.4rem 1.5rem;
+  }
+}
+
+/* ---------- background theme effects (behind the gate card) ---------- */
+
+.bg-fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+.bg-fx-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.12;
+  animation: grid-drift 18s linear infinite;
+  -webkit-mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 75%);
+  mask-image: radial-gradient(circle at 50% 35%, black 0%, transparent 75%);
+}
+
+@keyframes grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 600px, 600px 0;
+  }
+}
+
+.bg-fx-nebula {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-fx-nebula .blob {
+  position: absolute;
+  width: 50vmax;
+  height: 50vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  background: var(--nebula-color);
+}
+
+.bg-fx-nebula .blob-1 {
+  top: -10%;
+  left: -10%;
+  opacity: 0.22;
+  animation: nebula-float-1 22s ease-in-out infinite;
+}
+
+.bg-fx-nebula .blob-2 {
+  bottom: -15%;
+  right: -5%;
+  opacity: 0.16;
+  background: var(--accent);
+  animation: nebula-float-2 26s ease-in-out infinite;
+}
+
+.bg-fx-nebula .blob-3 {
+  top: 30%;
+  right: 20%;
+  opacity: 0.14;
+  animation: nebula-float-3 30s ease-in-out infinite;
+}
+
+@keyframes nebula-float-1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(8%, 6%);
+  }
+}
+
+@keyframes nebula-float-2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-6%, -8%);
+  }
+}
+
+@keyframes nebula-float-3 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-5%, 5%);
+  }
+}
+
+/* ---------- quick links (settings) ---------- */
+
+.quick-link-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.quick-link-row .input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.quick-link-select {
+  margin-top: 0.5rem;
 }
 
 /* ---------- admin shell (responsive: sidebar on desktop, top bar on mobile) ---------- */

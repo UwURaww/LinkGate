@@ -36,6 +36,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         const taken = data.gates.some((g) => g.slug === newSlug && g.id !== gate.id);
         if (!taken) gate.slug = newSlug;
       }
+      if (typeof body.bannerUrl === "string") gate.bannerUrl = body.bannerUrl || undefined;
+      if (["image", "video", "youtube"].includes(body.bannerType)) gate.bannerType = body.bannerType;
+      if (body.backgroundTheme === "" || body.backgroundTheme === null) {
+        gate.backgroundTheme = undefined;
+      } else if (["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)) {
+        gate.backgroundTheme = body.backgroundTheme;
+      }
       gate.updatedAt = new Date().toISOString();
       return gate;
     });
