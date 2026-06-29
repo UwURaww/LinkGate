@@ -64,42 +64,44 @@ export async function POST(req: NextRequest) {
   }
 
   // --- Step 1: lockout, token signature/expiry, and replay check ---
-  let lockoutMs = 0;
-  let invalidReason: InvalidReason = "";
-  let verified: VerifiedToken | null = null;
-  let tokenHash = "";
+  interface PrecheckResult {
+    lockoutMs: number;
+    invalidReason: InvalidReason;
+    verified: VerifiedToken | null;
+    tokenHash: string;
+  }
+
+  let precheck: PrecheckResult;
 
   try {
-    await updateSecurity((security) => {
+    precheck = await updateSecurity((security): PrecheckResult => {
       pruneSecurity(security);
 
       const lock = isLocked(security, ip);
       if (lock.locked) {
-        lockoutMs = lock.retryAfterMs || 0;
-        return;
+        return { lockoutMs: lock.retryAfterMs || 0, invalidReason: "", verified: null, tokenHash: "" };
       }
 
       const result = verifyGateToken(token);
       if (!result || result.slug !== slug) {
-        invalidReason = "bad-token";
         recordFailedAttempt(security, ip);
-        return;
+        return { lockoutMs: 0, invalidReason: "bad-token", verified: null, tokenHash: "" };
       }
 
       const hash = hashToken(token);
       if (isTokenUsed(security, hash)) {
-        invalidReason = "already-used";
         recordFailedAttempt(security, ip);
-        return;
+        return { lockoutMs: 0, invalidReason: "already-used", verified: null, tokenHash: "" };
       }
 
-      verified = result;
-      tokenHash = hash;
+      return { lockoutMs: 0, invalidReason: "", verified: result, tokenHash: hash };
     });
   } catch (err) {
     console.error("Failed to check security state:", err);
     return NextResponse.json({ error: "Something went wrong finishing this link." }, { status: 500 });
   }
+
+  const { lockoutMs, invalidReason, verified, tokenHash } = precheck;
 
   if (lockoutMs > 0) {
     return NextResponse.json(
