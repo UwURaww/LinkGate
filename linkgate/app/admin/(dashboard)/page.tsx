@@ -23,7 +23,7 @@ export default function GatesPage() {
   }
 
   function copyLink(gate: Gate) {
-    navigator.clipboard.writeText(`${origin}/g/${gate.slug}`);
+    navigator.clipboard.writeText(`${origin}/checkpoint#${gate.slug}`);
     setCopiedId(gate.id);
     setTimeout(() => setCopiedId(""), 1500);
   }
@@ -46,7 +46,7 @@ export default function GatesPage() {
         <div key={gate.id} className="panel gate-row">
           <div className="gate-row-info">
             <h3 style={{ fontSize: "1rem", marginBottom: "0.3rem" }}>{gate.title}</h3>
-            <p className="mono" style={{ fontSize: "0.8rem" }}>/g/{gate.slug}</p>
+            <p className="mono" style={{ fontSize: "0.8rem" }}>/checkpoint#{gate.slug}</p>
             <p style={{ fontSize: "0.8rem", marginTop: "0.3rem" }}>
               {gate.stats.views} views · {gate.stats.completions} completions
             </p>

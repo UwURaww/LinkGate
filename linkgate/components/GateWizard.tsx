@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PublicGate, SiteSettings } from "@/lib/types";
+import { PublicGate, PublicSiteSettings } from "@/lib/types";
 import { Icon } from "./icons";
 import CustomScriptSlot from "./CustomScriptSlot";
 import BannerMedia from "./BannerMedia";
 import BackgroundFX from "./BackgroundFX";
+import TurnstileWidget from "./TurnstileWidget";
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
 
 export default function GateWizard({ slug }: { slug: string }) {
   const [state, setState] = useState<LoadState>("loading");
   const [gate, setGate] = useState<PublicGate | null>(null);
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settings, setSettings] = useState<PublicSiteSettings | null>(null);
   const [token, setToken] = useState("");
   const [stepIndex, setStepIndex] = useState(0);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
@@ -22,6 +23,10 @@ export default function GateWizard({ slug }: { slug: string }) {
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState("");
   const [loadError, setLoadError] = useState("");
+  const [challengeQuestion, setChallengeQuestion] = useState("");
+  const [challengeAnswer, setChallengeAnswer] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [humanInteraction, setHumanInteraction] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -52,6 +57,7 @@ export default function GateWizard({ slug }: { slug: string }) {
         setGate(sessionData.gate);
         setToken(sessionData.token);
         setSettings(settingsData.settings ?? null);
+        setChallengeQuestion(sessionData.challengeQuestion || "");
         setState("ready");
       } catch {
         setState("error");
@@ -101,14 +107,17 @@ export default function GateWizard({ slug }: { slug: string }) {
     setCompletedIds((prev) => new Set(prev).add(stepId));
   }
 
-  function handleAction() {
+  function handleAction(e: React.MouseEvent) {
+    if (!e.isTrusted) setHumanInteraction(false);
     setActionTaken(true);
     if (currentStep?.postActionWaitSeconds) {
       setWaitLeft(currentStep.postActionWaitSeconds);
     }
   }
 
-  async function handleAdvance(stepId: string) {
+  async function handleAdvance(stepId: string, clickTrusted: boolean) {
+    const trustedSoFar = humanInteraction && clickTrusted;
+    if (!clickTrusted) setHumanInteraction(false);
     markComplete(stepId);
     if (!gate) return;
 
@@ -127,6 +136,9 @@ export default function GateWizard({ slug }: { slug: string }) {
           slug,
           token,
           completedStepIds: Array.from(new Set(completedIds).add(stepId)),
+          challengeAnswer: challengeAnswer ? Number(challengeAnswer) : undefined,
+          turnstileToken: turnstileToken || undefined,
+          humanInteraction: trustedSoFar,
         }),
       });
       const data = await res.json();
@@ -260,6 +272,28 @@ export default function GateWizard({ slug }: { slug: string }) {
             </a>
           )}
 
+          {currentStep.type === "verify" && (
+            <div>
+              {settings?.turnstileEnabled && settings.turnstileSiteKey ? (
+                <TurnstileWidget siteKey={settings.turnstileSiteKey} onVerify={setTurnstileToken} />
+              ) : (
+                <>
+                  <p className="mono" style={{ fontSize: "1.1rem", marginBottom: "0.6rem", color: "var(--accent)" }}>
+                    {challengeQuestion || "Loading..."}
+                  </p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="input"
+                    placeholder="Your answer"
+                    value={challengeAnswer}
+                    onChange={(e) => setChallengeAnswer(e.target.value)}
+                  />
+                </>
+              )}
+            </div>
+          )}
+
           {currentStep.type === "custom_script" && (
             <CustomScriptSlot scriptUrl={currentStep.scriptUrl} scriptInline={currentStep.scriptInline} />
           )}
@@ -278,10 +312,12 @@ export default function GateWizard({ slug }: { slug: string }) {
           disabled={
             finishing ||
             (currentStep.type === "timer" && secondsLeft > 0) ||
+            (currentStep.type === "verify" &&
+              (settings?.turnstileEnabled ? !turnstileToken : !challengeAnswer.trim())) ||
             (requiresAction && !actionTaken && !currentStep.skippable) ||
             waitLeft > 0
           }
-          onClick={() => handleAdvance(currentStep.id)}
+          onClick={(e) => handleAdvance(currentStep.id, e.isTrusted)}
         >
           {finishing
             ? "Finishing up..."
@@ -303,7 +339,7 @@ function Centered({
   settings,
 }: {
   children: React.ReactNode;
-  settings: SiteSettings | null;
+  settings: PublicSiteSettings | null;
 }) {
   const bgVar = {
     "--bg": settings?.backgroundColor || "#0e1013",

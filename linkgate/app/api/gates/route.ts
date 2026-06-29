@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasAdminSession } from "@/lib/auth";
 import { readStore, updateStore } from "@/lib/blob";
+import { readEffectiveStats } from "@/lib/stats";
 import { newId, randomSlug, slugify } from "@/lib/id";
 import { Gate, GateStep } from "@/lib/types";
 
@@ -9,7 +10,10 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const store = await readStore();
-  return NextResponse.json({ gates: store.gates });
+  const gates = await Promise.all(
+    store.gates.map(async (g) => ({ ...g, stats: await readEffectiveStats(g.id, g.stats) }))
+  );
+  return NextResponse.json({ gates });
 }
 
 export async function POST(req: NextRequest) {
@@ -41,6 +45,7 @@ export async function POST(req: NextRequest) {
     backgroundTheme: ["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)
       ? body.backgroundTheme
       : undefined,
+    shuffleSteps: !!body.shuffleSteps,
   };
 
   try {

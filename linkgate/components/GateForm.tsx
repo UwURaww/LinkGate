@@ -12,6 +12,7 @@ export interface GateFormValue {
   bannerUrl: string;
   bannerType: "image" | "video" | "youtube";
   backgroundTheme: BackgroundTheme | "";
+  shuffleSteps: boolean;
 }
 
 const BG_THEME_OPTIONS: { value: BackgroundTheme | ""; label: string }[] = [
@@ -41,6 +42,7 @@ export default function GateForm({
   const [bannerUrl, setBannerUrl] = useState(initial?.bannerUrl || "");
   const [bannerType, setBannerType] = useState<"image" | "video" | "youtube">(initial?.bannerType || "image");
   const [backgroundTheme, setBackgroundTheme] = useState<BackgroundTheme | "">(initial?.backgroundTheme || "");
+  const [shuffleSteps, setShuffleSteps] = useState(!!initial?.shuffleSteps);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -53,7 +55,7 @@ export default function GateForm({
     setSaving(true);
     setError("");
     try {
-      await onSubmit({ title, slug, destinationUrl, steps, bannerUrl, bannerType, backgroundTheme });
+      await onSubmit({ title, slug, destinationUrl, steps, bannerUrl, bannerType, backgroundTheme, shuffleSteps });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -126,6 +128,12 @@ export default function GateForm({
             ))}
           </select>
         </div>
+
+        <label className="checkbox-row" style={{ marginTop: "1rem" }}>
+          <input type="checkbox" checked={shuffleSteps} onChange={(e) => setShuffleSteps(e.target.checked)} />
+          Show steps in a random order each visit (including where the human-check lands, if you have
+          one) - makes it harder for a hardcoded script to assume step positions
+        </label>
       </div>
 
       <h2 style={{ fontSize: "1.05rem", marginBottom: "0.75rem" }}>Steps</h2>

@@ -1,4 +1,4 @@
-export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "social" | "custom_script";
+export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "social" | "verify" | "custom_script";
 
 export type IconKey =
   | "none"
@@ -11,7 +11,8 @@ export type IconKey =
   | "megaphone"
   | "clock"
   | "info"
-  | "message";
+  | "message"
+  | "shield";
 
 export type BackgroundTheme = "solid" | "starfield" | "matrix" | "grid" | "nebula";
 
@@ -53,16 +54,21 @@ export interface GateStep {
   postActionWaitSeconds?: number;
 }
 
+export interface GateStats {
+  views: number;
+  completions: number;
+}
+
 export interface Gate {
   id: string;
   slug: string;
   title: string;
   destinationUrl: string;
   steps: GateStep[];
-  stats: {
-    views: number;
-    completions: number;
-  };
+  /** Legacy/display seed only - the live counters live in their own
+   * per-gate file (see lib/stats.ts) so busy traffic on one gate can't
+   * clobber another gate's count or get clobbered by security bookkeeping. */
+  stats: GateStats;
   createdAt: string;
   updatedAt: string;
 
@@ -72,6 +78,10 @@ export interface Gate {
 
   // optional per-gate override of the site's default background theme
   backgroundTheme?: BackgroundTheme;
+
+  // shows steps (other than the human-check, if present) in a random order
+  // each session, so a hardcoded bypass script can't assume step positions
+  shuffleSteps?: boolean;
 }
 
 /** What the public gate page is allowed to see. Never includes destinationUrl. */
@@ -96,20 +106,38 @@ export interface SiteSettings {
   /** Saved links (e.g. your YouTube channel, Discord server) you can drop
    * into any step with one click instead of retyping them every time. */
   quickLinks?: QuickLink[];
+  /** Cloudflare Turnstile (free, unlimited, privacy-friendly CAPTCHA).
+   * Site key is public and shipped to the browser; secret key is never
+   * exposed to the public settings endpoint. If unset, the "Human check"
+   * step falls back to a simple auto-generated math question. */
+  turnstileSiteKey?: string;
+  turnstileSecretKey?: string;
 }
 
-/** Per-IP anti-bypass bookkeeping. Lives in the same store since this app
- * has no separate database - kept small and pruned on every write. */
+/** What the public gate page actually receives from /api/settings. The
+ * client can see turnstileSiteKey (it's meant to be public) but can never
+ * see whether a secret key is also configured - so the server computes
+ * turnstileEnabled once and hands that over instead of making the client
+ * guess from siteKey's presence alone (which could disagree with the
+ * server's own decision if only one of the two keys were set). */
+export type PublicSiteSettings = Omit<SiteSettings, "discordWebhookUrl" | "turnstileSecretKey"> & {
+  turnstileEnabled: boolean;
+};
+
+/** Per-IP anti-bypass bookkeeping. Stored in its own file, separate from
+ * gates/settings, since it's written on nearly every public request and
+ * shouldn't contend with admin edits or per-gate stats. */
 export interface SecurityState {
   failedAttempts: Record<string, { count: number; firstAt: number; lockedUntil?: number }>;
   /** hash(token) -> expiry timestamp, so a completed token can't be replayed */
   usedTokens: Record<string, number>;
+  /** throttles raw /api/gate-session calls (view-count spam, slug scraping) */
+  sessionStarts: Record<string, { count: number; firstAt: number }>;
 }
 
 export interface StoreData {
   gates: Gate[];
   settings: SiteSettings;
-  security: SecurityState;
 }
 
 export function defaultSettings(): SiteSettings {
@@ -124,9 +152,15 @@ export function defaultSettings(): SiteSettings {
     backgroundTheme: "solid",
     discordWebhookUrl: "",
     quickLinks: [],
+    turnstileSiteKey: "",
+    turnstileSecretKey: "",
   };
 }
 
 export function defaultSecurity(): SecurityState {
-  return { failedAttempts: {}, usedTokens: {} };
+  return { failedAttempts: {}, usedTokens: {}, sessionStarts: {} };
+}
+
+export function defaultStats(): GateStats {
+  return { views: 0, completions: 0 };
 }

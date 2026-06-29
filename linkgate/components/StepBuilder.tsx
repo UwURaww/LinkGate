@@ -10,6 +10,7 @@ const STEP_LABELS: Record<StepType, string> = {
   discord: "Join Discord",
   tip: "Tip to support",
   social: "Follow / subscribe / like",
+  verify: "Human check",
   custom_script: "Your own script (.js)",
 };
 
@@ -25,6 +26,7 @@ const ICON_KEYS: IconKey[] = [
   "clock",
   "info",
   "message",
+  "shield",
 ];
 
 function defaultIconFor(type: StepType): IconKey {
@@ -39,6 +41,8 @@ function defaultIconFor(type: StepType): IconKey {
       return "gift";
     case "social":
       return "userPlus";
+    case "verify":
+      return "shield";
     case "info":
       return "info";
     default:
@@ -75,6 +79,14 @@ function blankStep(type: StepType): GateStep {
         title: "Follow to continue",
         socialUrl: "",
         socialActionLabel: "Follow",
+      };
+    case "verify":
+      return {
+        id,
+        type,
+        icon,
+        title: "Quick check",
+        description: "Just to make sure you're not a bot.",
       };
     case "custom_script":
       return { id, type, icon, title: "One sec...", scriptUrl: "" };
@@ -181,7 +193,7 @@ export default function StepBuilder({
             </div>
           </div>
 
-          {(step.type === "info" || step.type === "timer" || step.type === "tip") && (
+          {(step.type === "info" || step.type === "timer" || step.type === "tip" || step.type === "verify") && (
             <div className="field">
               <label className="field-label">Description (optional)</label>
               <input
@@ -190,6 +202,13 @@ export default function StepBuilder({
                 onChange={(e) => update(i, { description: e.target.value })}
               />
             </div>
+          )}
+
+          {step.type === "verify" && (
+            <p style={{ fontSize: "0.8rem" }}>
+              No setup needed - visitors get a fresh, simple math question each time. This mainly
+              stops naive scripts that hit the link directly without loading the page.
+            </p>
           )}
 
           {step.type === "timer" && (
@@ -337,14 +356,16 @@ export default function StepBuilder({
             </div>
           )}
 
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={!!step.skippable}
-              onChange={(e) => update(i, { skippable: e.target.checked })}
-            />
-            Visitors can skip this step
-          </label>
+          {step.type !== "verify" && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={!!step.skippable}
+                onChange={(e) => update(i, { skippable: e.target.checked })}
+              />
+              Visitors can skip this step
+            </label>
+          )}
         </div>
       ))}
 

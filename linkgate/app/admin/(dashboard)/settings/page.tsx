@@ -145,6 +145,36 @@ export default function SettingsPage() {
         </div>
 
         <div className="panel settings-form" style={{ marginTop: "1.25rem" }}>
+          <h2 style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>Human check (CAPTCHA)</h2>
+          <p style={{ marginBottom: "1rem" }}>
+            Leave both fields blank and the "Human check" step uses a no-setup math question. For a
+            real CAPTCHA instead, create a free Cloudflare Turnstile widget (
+            <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener noreferrer">
+              dash.cloudflare.com → Turnstile
+            </a>
+            ) and paste the two keys it gives you below.
+          </p>
+          <div className="field">
+            <label className="field-label">Turnstile site key (public)</label>
+            <input
+              className="input"
+              placeholder="0x4AAAAAAA..."
+              value={settings.turnstileSiteKey || ""}
+              onChange={(e) => field("turnstileSiteKey", e.target.value)}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="field-label">Turnstile secret key (private - never shown to visitors)</label>
+            <input
+              className="input"
+              placeholder="0x4AAAAAAA..."
+              value={settings.turnstileSecretKey || ""}
+              onChange={(e) => field("turnstileSecretKey", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="panel settings-form" style={{ marginTop: "1.25rem" }}>
           <h2 style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>Saved links</h2>
           <p style={{ marginBottom: "1rem" }}>
             Save links you reuse a lot (your YouTube channel, Discord server, Ko-fi) so you can drop

@@ -117,6 +117,15 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+      <path d="M9 12l2 2 4-4" />
+    </Base>
+  );
+}
+
 type IconComponent = (props: IconProps) => React.JSX.Element;
 
 export const ICONS: Record<Exclude<IconKey, "none">, IconComponent> = {
@@ -130,6 +139,7 @@ export const ICONS: Record<Exclude<IconKey, "none">, IconComponent> = {
   clock: ClockIcon,
   info: InfoIcon,
   message: MessageIcon,
+  shield: ShieldIcon,
 };
 
 export const ICON_LABELS: Record<Exclude<IconKey, "none">, string> = {
@@ -143,6 +153,7 @@ export const ICON_LABELS: Record<Exclude<IconKey, "none">, string> = {
   clock: "Clock",
   info: "Info",
   message: "Message / chat",
+  shield: "Shield / verify",
 };
 
 export function Icon({ name, ...props }: { name?: IconKey } & IconProps) {

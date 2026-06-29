@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasAdminSession } from "@/lib/auth";
 import { readStore, updateStore } from "@/lib/blob";
+import { readEffectiveStats } from "@/lib/stats";
 import { slugify } from "@/lib/id";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -10,7 +11,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const store = await readStore();
   const gate = store.gates.find((g) => g.id === params.id);
   if (!gate) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  return NextResponse.json({ gate });
+  const stats = await readEffectiveStats(gate.id, gate.stats);
+  return NextResponse.json({ gate: { ...gate, stats } });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -43,6 +45,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       } else if (["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)) {
         gate.backgroundTheme = body.backgroundTheme;
       }
+      if (typeof body.shuffleSteps === "boolean") gate.shuffleSteps = body.shuffleSteps;
       gate.updatedAt = new Date().toISOString();
       return gate;
     });

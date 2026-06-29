@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateStore } from "@/lib/blob";
-import { issueGateToken } from "@/lib/token";
-import { ensureSecurity, getClientIp, isLocked, pruneSecurity } from "@/lib/security";
-import { Gate, PublicGate } from "@/lib/types";
+import { readStore } from "@/lib/blob";
+import { updateSecurity } from "@/lib/security-store";
+import { incrementGateStat } from "@/lib/stats";
+import { generateMathChallenge, issueGateToken } from "@/lib/token";
+import {
+  getClientIp,
+  isLocked,
+  isSessionRateLimited,
+  pruneSecurity,
+  recordSessionStart,
+} from "@/lib/security";
+import { PublicGate } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -13,25 +21,24 @@ export async function POST(req: NextRequest) {
   }
 
   let lockoutMs = 0;
-  let gate: Gate | undefined;
+  let rateLimited = false;
 
   try {
-    await updateStore((data) => {
-      ensureSecurity(data);
-      pruneSecurity(data.security);
-
-      const lock = isLocked(data.security, ip);
+    await updateSecurity((security) => {
+      pruneSecurity(security);
+      const lock = isLocked(security, ip);
       if (lock.locked) {
         lockoutMs = lock.retryAfterMs || 0;
         return;
       }
-
-      const g = data.gates.find((gate) => gate.slug === slug);
-      if (g) g.stats.views += 1;
-      gate = g;
+      if (isSessionRateLimited(security, ip)) {
+        rateLimited = true;
+        return;
+      }
+      recordSessionStart(security, ip);
     });
   } catch (err) {
-    console.error("Failed to start gate session:", err);
+    console.error("Failed to check session limits:", err);
     return NextResponse.json({ error: "Something went wrong loading this link." }, { status: 500 });
   }
 
@@ -42,23 +49,63 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (rateLimited) {
+    return NextResponse.json({ error: "Too many requests. Slow down and try again shortly." }, { status: 429 });
+  }
+
+  let store;
+  try {
+    store = await readStore();
+  } catch (err) {
+    console.error("Failed to load gate:", err);
+    return NextResponse.json({ error: "Something went wrong loading this link." }, { status: 500 });
+  }
+
+  const gate = store.gates.find((g) => g.slug === slug);
   if (!gate) {
     return NextResponse.json({ error: "This link doesn't exist or was removed." }, { status: 404 });
   }
+
+  incrementGateStat(gate.id, "views", gate.stats).catch((err) => {
+    console.error("Failed to record a view (non-fatal):", err);
+  });
+
+  const hasVerifyStep = gate.steps.some((s) => s.type === "verify");
+  const usingTurnstile = hasVerifyStep && !!store.settings.turnstileSiteKey && !!store.settings.turnstileSecretKey;
+  let challengeQuestion: string | undefined;
+  let answerHash: string | undefined;
+
+  if (hasVerifyStep && !usingTurnstile) {
+    const challenge = generateMathChallenge();
+    challengeQuestion = challenge.question;
+    answerHash = challenge.answerHash;
+  }
+
+  const steps = gate.shuffleSteps ? shuffle(gate.steps) : gate.steps;
 
   const publicGate: PublicGate = {
     id: gate.id,
     slug: gate.slug,
     title: gate.title,
-    steps: gate.steps,
+    steps,
     createdAt: gate.createdAt,
     updatedAt: gate.updatedAt,
     bannerUrl: gate.bannerUrl,
     bannerType: gate.bannerType,
     backgroundTheme: gate.backgroundTheme,
+    shuffleSteps: gate.shuffleSteps,
   };
 
-  const token = issueGateToken(gate.slug, gate.steps.length);
+  const token = issueGateToken(gate.slug, gate.steps.length, answerHash);
 
-  return NextResponse.json({ gate: publicGate, token });
+  return NextResponse.json({ gate: publicGate, token, challengeQuestion });
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }

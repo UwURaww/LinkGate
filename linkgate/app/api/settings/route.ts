@@ -7,9 +7,14 @@ export async function GET() {
   if (hasAdminSession()) {
     return NextResponse.json({ settings: store.settings });
   }
-  // Public callers (the gate pages) only get what they need to render a theme.
-  const { discordWebhookUrl, ...publicSettings } = store.settings;
-  return NextResponse.json({ settings: publicSettings });
+  // Public callers (the gate pages) only get what they need to render a theme
+  // and the Turnstile site key (which is meant to be public). The secret key
+  // and webhook URL never leave the server. turnstileEnabled is computed
+  // here so the client's decision always matches the server's.
+  const { discordWebhookUrl, turnstileSecretKey, ...rest } = store.settings;
+  return NextResponse.json({
+    settings: { ...rest, turnstileEnabled: !!store.settings.turnstileSiteKey && !!turnstileSecretKey },
+  });
 }
 
 export async function PUT(req: NextRequest) {

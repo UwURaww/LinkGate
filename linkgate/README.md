@@ -30,8 +30,9 @@ to coercive tricks.
 ## Stack
 
 - Next.js 14 (App Router) + TypeScript, no UI framework dependency
-- Storage: [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) - a single
-  JSON file, no Redis/Postgres account needed
+- Storage: [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) - JSON
+  files (gates/settings, security bookkeeping, and per-gate stats each live
+  separately - see "Storage layout" below), no Redis/Postgres account needed
 - Deploy target: Vercel, connected to a GitHub repo
 
 ## Local setup
@@ -63,7 +64,18 @@ will reset when the dev server restarts.
    - `SESSION_SECRET` - any long random string (`openssl rand -hex 32`)
    - `DISCORD_WEBHOOK_URL` - optional
 5. Deploy. Visit `yourproject.vercel.app/admin`, sign in, create a gate, and
-   share `yourproject.vercel.app/g/your-slug`.
+   copy its link from the dashboard.
+
+## Sharing a gate
+
+Copy the link from `/admin` - it looks like
+`yourproject.vercel.app/checkpoint#your-slug`. The part after `#` is the
+fragment: browsers never send it to the server, so it never shows up in
+server logs or a Referer header, and the visible *path* is always exactly
+`/checkpoint` no matter which gate it is. `/verify` works as an identical
+alias if you'd rather hand out that word instead - pick whichever fits your
+branding. The old `/g/your-slug` path still works too, for any links you
+already shared before this existed.
 
 ## Using your own monetization script
 
@@ -73,14 +85,6 @@ running) or paste inline JavaScript directly. It runs in the visitor's browser
 on that step. Since it runs with full page access, only point this at scripts
 from sources you trust - a malicious one could do anything an attacker
 controlling the page could do.
-
-## Known limitations (it's one JSON file, not a database)
-
-- Two admin edits at the exact same instant can clobber each other (last
-  write wins). Fine at hobby scale; if you get to the point where that
-  matters, swap `lib/blob.ts` for a real database - it's the only file that
-  touches storage.
-- View/completion counts are simple counters, not deduplicated per visitor.
 
 ## Customizing the look
 
@@ -94,6 +98,29 @@ Saved links (your YouTube channel, Discord server, Ko-fi, etc.) live in
 Settings too - add one once, then insert it into any step with one click
 instead of retyping it.
 
+## Storage layout (and why)
+
+Three separate files instead of one, so a busy moment in one place can't
+clobber a write somewhere unrelated:
+
+- `linkgate-store.json` - gates + settings. Only written by admin actions
+  (create/edit/delete a gate, save settings), so it's rarely contended.
+- `linkgate-security.json` - IP lockouts, used-token tracking, session-rate
+  bookkeeping. Written on nearly every public request, kept separate so it
+  never competes with your actual gate data.
+- `linkgate-stats-{gateId}.json` - one tiny file per gate, just `{views,
+  completions}`. Isolates the counters so traffic on one gate can never
+  stomp a write to another gate's counters (or get stomped by a settings
+  save). If you ever saw a completion not get counted, this was almost
+  certainly why - everything used to share one file.
+
+None of these are real transactions - if two requests hit the *same* file at
+the exact same instant, the last write still wins. Splitting the files makes
+that collision far less likely (it now only happens between two things that
+are *actually* related), not impossible. If you outgrow this, swap the three
+files in `lib/blob.ts` / `lib/security-store.ts` / `lib/stats.ts` for a real
+database - nothing else in the app touches storage directly.
+
 ## Anti-bypass hardening
 
 - Tokens are one-time-use: once a gate is completed, that exact token can't
@@ -101,8 +128,46 @@ instead of retyping it.
 - Repeated invalid completion attempts from the same IP (forged tokens,
   claiming steps were done when they weren't) trigger a temporary lockout for
   that IP. Normal visitors going through the wizard never trigger this.
+- Raw requests to start a gate session are also throttled per IP (separate,
+  softer limit) - this stops scripts from spamming view counts or scraping
+  slugs without ever loading the page.
+- An optional **Human check** step asks a fresh, simple math question per
+  session by default - no setup needed. The expected answer is never sent to
+  the browser in the clear; it's a one-way hash signed into the token, so
+  even someone who decodes the token can't read the answer off it.
+- For a real CAPTCHA instead of the math question, add a free
+  [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)
+  site key + secret key in `/admin/settings`. Once both are set, every
+  "Human check" step automatically switches to the real widget - no per-gate
+  setup. Leave either field blank and it falls back to the math question.
+- Every click that advances a step is checked for `event.isTrusted` - a
+  property the browser itself sets, which JavaScript can't fake. A userscript
+  driving the page with `element.click()` or `dispatchEvent()` produces
+  untrusted clicks; real mouse, touch, and keyboard activation never does.
+  This specifically targets the common "Tampermonkey auto-clicks through the
+  gate" pattern.
+- Completing a gate faster than a real person plausibly could (reading and
+  clicking through every step) is treated the same as not finishing it. The
+  threshold is generous on purpose so genuinely fast humans never trip it.
+- Per-gate "shuffle step order" option (in the gate editor) shows the steps
+  in a random order each visit, so a script that hardcodes step positions
+  breaks.
 - The "wait after clicking" option on ad/social/tip/Discord steps is an
   honest, visible timer ("Continue in 18s") - not a fake "verifying..." state.
-  Nothing here can actually verify a visitor watched an ad or followed a
-  link; claiming otherwise would just be lying to them, so the UI never does.
+
+Worth being honest about: none of this - including the real CAPTCHA, the
+click-trust check, and the timing check - can stop a script that skips the
+page entirely and talks straight to the API, since at that point it's just
+choosing what to put in a JSON body, including a fabricated "yes this was a
+trusted click." Those three are specifically aimed at scripts that drive the
+*page itself* (which is the overwhelming majority of public bypass
+userscripts in the wild - directly reverse-engineering a specific site's API
+is a lot more work than calling `.click()` on some buttons). What stops
+direct-API attempts is everything earlier in this list: the signed token,
+the answer/Turnstile check, and the lockout. And none of it can *prove* a
+visitor actually watched an ad or read a message; that would require the ad
+network's own SDK. It also can't stop someone who's actually willing to sit
+and click through the page like a normal visitor, because that's
+indistinguishable from one. What it does stop is automation that tries to
+skip straight to the end without ever doing that.
 
