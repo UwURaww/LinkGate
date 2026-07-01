@@ -344,8 +344,8 @@ export default function StepBuilder({
                 </select>
               </div>
               <p style={{ fontSize: "0.8rem" }}>
-                Shows as a small draggable floating player. The step only unlocks once the video
-                genuinely finishes - not a fake timer.
+                Shows as a larger, draggable floating window. No scrub bar or seek shortcuts - the
+                step only unlocks once the video genuinely plays through to the end.
               </p>
             </>
           )}

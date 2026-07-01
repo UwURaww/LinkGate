@@ -7,6 +7,7 @@ import { PauseIcon, PlayIcon } from "./icons";
 interface YTPlayerInstance {
   playVideo?: () => void;
   pauseVideo?: () => void;
+  seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
   getCurrentTime?: () => number;
   getDuration?: () => number;
   destroy?: () => void;
@@ -56,6 +57,12 @@ function loadYouTubeApi(): Promise<void> {
   return youtubeApiPromise;
 }
 
+// How far a currentTime/getCurrentTime() reading is allowed to jump forward
+// between checks before it's treated as a skip attempt and snapped back.
+// Generous enough to absorb normal playback + polling/event timing jitter.
+const DIRECT_JUMP_THRESHOLD_SEC = 2;
+const YOUTUBE_JUMP_THRESHOLD_SEC = 3;
+
 export default function FloatingVideoPlayer({
   videoUrl,
   sourceType,
@@ -70,6 +77,8 @@ export default function FloatingVideoPlayer({
   const ytPlayerRef = useRef<YTPlayerInstance | null>(null);
   const ytElementId = useRef(`yt-float-${Math.random().toString(36).slice(2, 9)}`);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const furthestTimeRef = useRef(0);
+  const playingRef = useRef(false);
 
   const [minimized, setMinimized] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -79,6 +88,10 @@ export default function FloatingVideoPlayer({
 
   const youtubeId = sourceType === "youtube" ? extractYouTubeId(videoUrl) : null;
   const hasValidSource = sourceType === "youtube" ? !!youtubeId : !!videoUrl;
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   function markDone() {
     setDone((prev) => {
@@ -94,6 +107,19 @@ export default function FloatingVideoPlayer({
     if (done) setMinimized(true);
   }, [done]);
 
+  // Center the window on first mount, reading its actual rendered size (so
+  // this works correctly whether the mobile or desktop CSS size applied).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({
+      x: Math.max(8, (window.innerWidth - rect.width) / 2),
+      y: Math.max(8, (window.innerHeight - rect.height) / 2),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- YouTube branch: real IFrame API, ENDED state is the true signal ---
   useEffect(() => {
     if (sourceType !== "youtube" || !youtubeId) return;
@@ -105,14 +131,24 @@ export default function FloatingVideoPlayer({
       if (cancelled || !window.YT) return;
       ytPlayerRef.current = new window.YT.Player(ytElementId.current, {
         videoId: youtubeId,
-        playerVars: { playsinline: 1, modestbranding: 1, rel: 0, controls: 0 },
+        // disablekb/fs close the two YouTube-native ways to seek without a
+        // visible scrub bar; controls:0 already removes the scrub bar itself.
+        playerVars: { playsinline: 1, modestbranding: 1, rel: 0, controls: 0, disablekb: 1, fs: 0 },
         events: {
           onReady: () => {
             poll = setInterval(() => {
               const p = ytPlayerRef.current;
               if (!p?.getCurrentTime || !p?.getDuration) return;
+              const cur = p.getCurrentTime();
               const dur = p.getDuration();
-              if (dur > 0) setProgress(Math.min(100, (p.getCurrentTime() / dur) * 100));
+
+              if (playingRef.current && cur - furthestTimeRef.current > YOUTUBE_JUMP_THRESHOLD_SEC) {
+                p.seekTo?.(furthestTimeRef.current, true);
+              } else {
+                furthestTimeRef.current = Math.max(furthestTimeRef.current, cur);
+              }
+
+              if (dur > 0) setProgress(Math.min(100, (furthestTimeRef.current / dur) * 100));
             }, 1000);
           },
           onStateChange: (e) => {
@@ -140,7 +176,13 @@ export default function FloatingVideoPlayer({
     if (!el) return;
 
     function handleTimeUpdate() {
-      if (el!.duration > 0) setProgress(Math.min(100, (el!.currentTime / el!.duration) * 100));
+      const cur = el!.currentTime;
+      if (playingRef.current && cur - furthestTimeRef.current > DIRECT_JUMP_THRESHOLD_SEC) {
+        el!.currentTime = furthestTimeRef.current;
+        return;
+      }
+      furthestTimeRef.current = Math.max(furthestTimeRef.current, cur);
+      if (el!.duration > 0) setProgress(Math.min(100, (furthestTimeRef.current / el!.duration) * 100));
     }
     function handleEnded() {
       markDone();
@@ -151,16 +193,32 @@ export default function FloatingVideoPlayer({
     function handlePause() {
       setPlaying(false);
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      // Arrow keys are the standard browser seek shortcut on a focused
+      // video element - block just those, leave space/other keys alone.
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+      }
+    }
+    function handleContextMenu(e: Event) {
+      // Some browsers put a "seek" option in the native video right-click
+      // menu even without visible controls - block it on this element only.
+      e.preventDefault();
+    }
 
     el.addEventListener("timeupdate", handleTimeUpdate);
     el.addEventListener("ended", handleEnded);
     el.addEventListener("play", handlePlay);
     el.addEventListener("pause", handlePause);
+    el.addEventListener("keydown", handleKeyDown);
+    el.addEventListener("contextmenu", handleContextMenu);
     return () => {
       el.removeEventListener("timeupdate", handleTimeUpdate);
       el.removeEventListener("ended", handleEnded);
       el.removeEventListener("play", handlePlay);
       el.removeEventListener("pause", handlePause);
+      el.removeEventListener("keydown", handleKeyDown);
+      el.removeEventListener("contextmenu", handleContextMenu);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceType]);
@@ -215,7 +273,7 @@ export default function FloatingVideoPlayer({
   return (
     <div ref={containerRef} className={`floating-video ${minimized ? "minimized" : ""}`} style={style}>
       <div className="floating-video-header" onPointerDown={onDragStart}>
-        <span>{done ? "Watched" : "Watch to continue"}</span>
+        <span>{done ? "Watched" : "Watch to continue - no skipping"}</span>
         <button
           type="button"
           className="floating-video-toggle"
@@ -226,25 +284,26 @@ export default function FloatingVideoPlayer({
         </button>
       </div>
 
-      {!minimized && (
-        <div className="floating-video-body">
-          {!hasValidSource ? (
-            <div className="floating-video-fallback">
-              <p>Video link isn&apos;t set up right.</p>
-            </div>
-          ) : sourceType === "youtube" ? (
-            <div id={ytElementId.current} className="floating-video-yt" />
-          ) : (
-            <video ref={videoElRef} src={videoUrl} playsInline />
-          )}
+      {/* Always mounted (just visually collapsed when minimized) so the
+          player - especially the YouTube iframe - doesn't get torn down
+          and lose its state every time this is minimized/restored. */}
+      <div className={`floating-video-body ${minimized ? "collapsed" : ""}`}>
+        {!hasValidSource ? (
+          <div className="floating-video-fallback">
+            <p>Video link isn&apos;t set up right.</p>
+          </div>
+        ) : sourceType === "youtube" ? (
+          <div id={ytElementId.current} className="floating-video-yt" />
+        ) : (
+          <video ref={videoElRef} src={videoUrl} playsInline disablePictureInPicture />
+        )}
 
-          {hasValidSource && !done && (
-            <button type="button" className="floating-video-playpause" onClick={togglePlay}>
-              {playing ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
-            </button>
-          )}
-        </div>
-      )}
+        {hasValidSource && !done && (
+          <button type="button" className="floating-video-playpause" onClick={togglePlay}>
+            {playing ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+          </button>
+        )}
+      </div>
 
       <div className="floating-video-progress">
         <div className="floating-video-progress-fill" style={{ width: `${progress}%` }} />
