@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BackgroundTheme, Gate, GateStep, QuickLink } from "@/lib/types";
+import { BackgroundTheme, Gate, GateStep, LayoutStyle, QuickLink } from "@/lib/types";
 import StepBuilder from "./StepBuilder";
 
 export interface GateFormValue {
@@ -14,6 +14,7 @@ export interface GateFormValue {
   backgroundTheme: BackgroundTheme | "";
   shuffleSteps: boolean;
   requireHumanCheck: boolean;
+  layoutStyle: LayoutStyle | "";
 }
 
 const BG_THEME_OPTIONS: { value: BackgroundTheme | ""; label: string }[] = [
@@ -23,6 +24,14 @@ const BG_THEME_OPTIONS: { value: BackgroundTheme | ""; label: string }[] = [
   { value: "matrix", label: "Matrix rain (code)" },
   { value: "grid", label: "Energy grid (stellar / void)" },
   { value: "nebula", label: "Nebula" },
+  { value: "aurora", label: "Aurora (flowing color waves)" },
+  { value: "particles", label: "Particles (floating boost dots)" },
+];
+
+const LAYOUT_OPTIONS: { value: LayoutStyle | ""; label: string }[] = [
+  { value: "", label: "Use site default" },
+  { value: "wizard", label: "Wizard (one step at a time)" },
+  { value: "stack", label: "Stack (drawer - all steps visible, collapse as completed)" },
 ];
 
 export default function GateForm({
@@ -45,6 +54,7 @@ export default function GateForm({
   const [backgroundTheme, setBackgroundTheme] = useState<BackgroundTheme | "">(initial?.backgroundTheme || "");
   const [shuffleSteps, setShuffleSteps] = useState(!!initial?.shuffleSteps);
   const [requireHumanCheck, setRequireHumanCheck] = useState(!!initial?.requireHumanCheck);
+  const [layoutStyle, setLayoutStyle] = useState<LayoutStyle | "">(initial?.layoutStyle || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,6 +77,7 @@ export default function GateForm({
         backgroundTheme,
         shuffleSteps,
         requireHumanCheck,
+        layoutStyle,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -158,6 +169,24 @@ export default function GateForm({
             onChange={(e) => setBackgroundTheme(e.target.value as BackgroundTheme | "")}
           >
             {BG_THEME_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="panel" style={{ padding: "1.5rem", marginBottom: "1.25rem" }}>
+        <h2 style={{ fontSize: "1.05rem", marginBottom: "0.75rem" }}>Layout</h2>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="field-label">How steps are shown for this gate</label>
+          <select
+            className="input"
+            value={layoutStyle}
+            onChange={(e) => setLayoutStyle(e.target.value as LayoutStyle | "")}
+          >
+            {LAYOUT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

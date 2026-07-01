@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BackgroundTheme, QuickLink, SiteSettings, defaultSettings } from "@/lib/types";
+import { BackgroundTheme, LayoutStyle, QuickLink, SiteSettings, defaultSettings } from "@/lib/types";
 
 const BG_THEME_OPTIONS: { value: BackgroundTheme; label: string }[] = [
   { value: "solid", label: "Solid" },
@@ -9,6 +9,13 @@ const BG_THEME_OPTIONS: { value: BackgroundTheme; label: string }[] = [
   { value: "matrix", label: "Matrix rain (code)" },
   { value: "grid", label: "Energy grid (stellar / void)" },
   { value: "nebula", label: "Nebula" },
+  { value: "aurora", label: "Aurora (flowing color waves)" },
+  { value: "particles", label: "Particles (floating boost dots)" },
+];
+
+const LAYOUT_OPTIONS: { value: LayoutStyle; label: string }[] = [
+  { value: "wizard", label: "Wizard (one step at a time)" },
+  { value: "stack", label: "Stack (drawer - all steps visible, collapse as completed)" },
 ];
 
 function newLinkId() {
@@ -131,6 +138,21 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Layout style (default for all gates)</label>
+            <select
+              className="input"
+              value={settings.layoutStyle || "wizard"}
+              onChange={(e) => field("layoutStyle", e.target.value as LayoutStyle)}
+            >
+              {LAYOUT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="field" style={{ marginBottom: 0 }}>

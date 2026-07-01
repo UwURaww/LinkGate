@@ -157,6 +157,7 @@ export async function POST(req: NextRequest) {
     bannerType: gate.bannerType,
     backgroundTheme: gate.backgroundTheme,
     shuffleSteps: gate.shuffleSteps,
+    layoutStyle: gate.layoutStyle,
   };
   const token = issueGateToken(gate.slug, gate.steps.length);
 

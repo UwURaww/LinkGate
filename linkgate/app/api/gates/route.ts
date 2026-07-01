@@ -5,6 +5,9 @@ import { readEffectiveStats } from "@/lib/stats";
 import { newId, randomSlug, slugify } from "@/lib/id";
 import { Gate, GateStep } from "@/lib/types";
 
+const VALID_THEMES = ["solid", "starfield", "matrix", "grid", "nebula", "aurora", "particles"];
+const VALID_LAYOUTS = ["wizard", "stack"];
+
 export async function GET() {
   if (!hasAdminSession()) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -42,11 +45,10 @@ export async function POST(req: NextRequest) {
     updatedAt: now,
     bannerUrl: typeof body.bannerUrl === "string" ? body.bannerUrl : undefined,
     bannerType: ["image", "video", "youtube"].includes(body.bannerType) ? body.bannerType : undefined,
-    backgroundTheme: ["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)
-      ? body.backgroundTheme
-      : undefined,
+    backgroundTheme: VALID_THEMES.includes(body.backgroundTheme) ? body.backgroundTheme : undefined,
     shuffleSteps: !!body.shuffleSteps,
     requireHumanCheck: !!body.requireHumanCheck,
+    layoutStyle: VALID_LAYOUTS.includes(body.layoutStyle) ? body.layoutStyle : undefined,
   };
 
   try {

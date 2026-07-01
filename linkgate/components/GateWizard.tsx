@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PublicGate, PublicSiteSettings } from "@/lib/types";
-import { Icon } from "./icons";
-import CustomScriptSlot from "./CustomScriptSlot";
+import { CheckIcon, Icon, LockIcon } from "./icons";
 import BannerMedia from "./BannerMedia";
 import BackgroundFX from "./BackgroundFX";
 import HumanCheckCard from "./HumanCheckCard";
+import StepContent from "./StepContent";
 
 type Phase = "loading" | "start-check" | "steps" | "not-found" | "error";
 
@@ -28,6 +28,7 @@ export default function GateWizard({ slug }: { slug: string }) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [actionTaken, setActionTaken] = useState(false);
+  const [videoWatched, setVideoWatched] = useState(false);
   const [waitLeft, setWaitLeft] = useState(0);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState("");
@@ -116,6 +117,7 @@ export default function GateWizard({ slug }: { slug: string }) {
 
   useEffect(() => {
     setActionTaken(false);
+    setVideoWatched(false);
     setWaitLeft(0);
   }, [stepIndex]);
 
@@ -129,6 +131,7 @@ export default function GateWizard({ slug }: { slug: string }) {
   const background = settings?.backgroundColor || "#0e1013";
   const radius = settings?.cornerStyle === "sharp" ? "2px" : "10px";
   const bgTheme = gate?.backgroundTheme || settings?.backgroundTheme || "solid";
+  const layoutStyle = gate?.layoutStyle || settings?.layoutStyle || "wizard";
 
   const themeVars = useMemo(
     () =>
@@ -150,6 +153,10 @@ export default function GateWizard({ slug }: { slug: string }) {
     if (currentStep?.postActionWaitSeconds) {
       setWaitLeft(currentStep.postActionWaitSeconds);
     }
+  }
+
+  function handleVideoComplete() {
+    setVideoWatched(true);
   }
 
   async function handleAdvance(stepId: string, clickTrusted: boolean) {
@@ -250,6 +257,22 @@ export default function GateWizard({ slug }: { slug: string }) {
   }
 
   const requiresAction = ["ad", "discord", "tip", "social"].includes(currentStep.type);
+  const isDisabled =
+    finishing ||
+    (currentStep.type === "timer" && secondsLeft > 0) ||
+    (requiresAction && !actionTaken && !currentStep.skippable) ||
+    (currentStep.type === "video" && !!currentStep.videoUrl && !videoWatched && !currentStep.skippable) ||
+    waitLeft > 0;
+
+  const buttonLabel = finishing
+    ? "Finishing up..."
+    : waitLeft > 0
+      ? `Wait ${waitLeft}s`
+      : stepIndex + 1 === gate.steps.length
+        ? "Continue"
+        : currentStep.skippable && !actionTaken && !videoWatched
+          ? "Skip"
+          : "Continue";
 
   return (
     <div style={{ ...themeVars }} className="gate-screen">
@@ -262,121 +285,72 @@ export default function GateWizard({ slug }: { slug: string }) {
           <img src={settings.logoUrl} alt="" className="gate-logo" />
         )}
 
-        <div className="checkpoint-rail">
-          {gate.steps.map((s, i) => (
-            <div
-              key={s.id}
-              className={`segment ${i < stepIndex ? "done" : i === stepIndex ? "active" : ""}`}
-            />
-          ))}
-        </div>
-
-        <p className="mono" style={{ fontSize: "0.75rem", marginBottom: "0.4rem" }}>
+        <p className="mono" style={{ fontSize: "0.75rem", marginBottom: layoutStyle === "stack" ? "0.75rem" : "0.4rem" }}>
           STEP {stepIndex + 1} OF {gate.steps.length}
         </p>
 
-        <div className="gate-step-title">
-          <Icon name={currentStep.icon} size={20} />
-          <h1 style={{ fontSize: "1.25rem" }}>{currentStep.title}</h1>
-        </div>
-
-        {currentStep.description && (
-          <p style={{ marginBottom: "1.25rem" }}>{currentStep.description}</p>
+        {layoutStyle === "stack" ? (
+          <div className="stack-list">
+            {gate.steps.map((s, i) => {
+              const state = i < stepIndex ? "done" : i === stepIndex ? "active" : "locked";
+              return (
+                <div key={s.id} className={`stack-item ${state}`}>
+                  {state === "active" ? (
+                    <StepContent
+                      step={s}
+                      secondsLeft={secondsLeft}
+                      actionTaken={actionTaken}
+                      waitLeft={waitLeft}
+                      videoWatched={videoWatched}
+                      onAction={handleAction}
+                      onVideoComplete={handleVideoComplete}
+                    />
+                  ) : (
+                    <div className="stack-item-summary">
+                      <Icon name={s.icon} size={16} />
+                      <span>{s.title}</span>
+                      {state === "done" ? (
+                        <span className="stack-item-check">
+                          <CheckIcon size={14} />
+                        </span>
+                      ) : (
+                        <span className="stack-item-lock">
+                          <LockIcon size={14} />
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <div className="checkpoint-rail">
+              {gate.steps.map((s, i) => (
+                <div key={s.id} className={`segment ${i < stepIndex ? "done" : i === stepIndex ? "active" : ""}`} />
+              ))}
+            </div>
+            <StepContent
+              step={currentStep}
+              secondsLeft={secondsLeft}
+              actionTaken={actionTaken}
+              waitLeft={waitLeft}
+              videoWatched={videoWatched}
+              onAction={handleAction}
+              onVideoComplete={handleVideoComplete}
+            />
+          </>
         )}
-
-        <div style={{ marginBottom: "1.5rem" }}>
-          {currentStep.type === "info" && null}
-
-          {currentStep.type === "timer" && (
-            <p className="mono" style={{ fontSize: "2rem", color: "var(--accent)" }}>
-              {secondsLeft > 0 ? secondsLeft : "Ready"}
-            </p>
-          )}
-
-          {currentStep.type === "ad" && (
-            <a
-              href={currentStep.adUrl || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-icon"
-              onClick={handleAction}
-            >
-              <Icon name={currentStep.icon} size={16} />
-              {currentStep.adButtonLabel || "Visit sponsor"}
-            </a>
-          )}
-
-          {currentStep.type === "discord" && (
-            <a
-              href={currentStep.discordInvite || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-icon"
-              onClick={handleAction}
-            >
-              <Icon name={currentStep.icon} size={16} />
-              Join the Discord
-            </a>
-          )}
-
-          {currentStep.type === "tip" && (
-            <a
-              href={currentStep.tipUrl || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-icon"
-              onClick={handleAction}
-            >
-              <Icon name={currentStep.icon} size={16} />
-              {currentStep.tipLabel || "Leave a tip"}
-            </a>
-          )}
-
-          {currentStep.type === "social" && (
-            <a
-              href={currentStep.socialUrl || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-icon"
-              onClick={handleAction}
-            >
-              <Icon name={currentStep.icon} size={16} />
-              {currentStep.socialActionLabel || "Follow"}
-            </a>
-          )}
-
-          {currentStep.type === "custom_script" && (
-            <CustomScriptSlot scriptUrl={currentStep.scriptUrl} scriptInline={currentStep.scriptInline} />
-          )}
-
-          {requiresAction && actionTaken && waitLeft > 0 && (
-            <p className="mono" style={{ fontSize: "0.8rem", marginTop: "0.6rem", color: "var(--text-muted)" }}>
-              You can continue in {waitLeft}s
-            </p>
-          )}
-        </div>
 
         {finishError && <p style={{ color: "var(--danger)", marginBottom: "1rem" }}>{finishError}</p>}
 
         <button
           className="btn btn-primary gate-continue"
-          disabled={
-            finishing ||
-            (currentStep.type === "timer" && secondsLeft > 0) ||
-            (requiresAction && !actionTaken && !currentStep.skippable) ||
-            waitLeft > 0
-          }
+          disabled={isDisabled}
           onClick={(e) => handleAdvance(currentStep.id, e.isTrusted)}
         >
-          {finishing
-            ? "Finishing up..."
-            : waitLeft > 0
-              ? `Wait ${waitLeft}s`
-              : stepIndex + 1 === gate.steps.length
-                ? "Continue"
-                : currentStep.skippable && !actionTaken
-                  ? "Skip"
-                  : "Continue"}
+          {buttonLabel}
         </button>
       </div>
     </div>

@@ -4,6 +4,9 @@ import { readStore, updateStore } from "@/lib/blob";
 import { readEffectiveStats } from "@/lib/stats";
 import { slugify } from "@/lib/id";
 
+const VALID_THEMES = ["solid", "starfield", "matrix", "grid", "nebula", "aurora", "particles"];
+const VALID_LAYOUTS = ["wizard", "stack"];
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!hasAdminSession()) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -42,11 +45,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       if (["image", "video", "youtube"].includes(body.bannerType)) gate.bannerType = body.bannerType;
       if (body.backgroundTheme === "" || body.backgroundTheme === null) {
         gate.backgroundTheme = undefined;
-      } else if (["solid", "starfield", "matrix", "grid", "nebula"].includes(body.backgroundTheme)) {
+      } else if (VALID_THEMES.includes(body.backgroundTheme)) {
         gate.backgroundTheme = body.backgroundTheme;
       }
       if (typeof body.shuffleSteps === "boolean") gate.shuffleSteps = body.shuffleSteps;
       if (typeof body.requireHumanCheck === "boolean") gate.requireHumanCheck = body.requireHumanCheck;
+      if (body.layoutStyle === "" || body.layoutStyle === null) {
+        gate.layoutStyle = undefined;
+      } else if (VALID_LAYOUTS.includes(body.layoutStyle)) {
+        gate.layoutStyle = body.layoutStyle;
+      }
       gate.updatedAt = new Date().toISOString();
       return gate;
     });

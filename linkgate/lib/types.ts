@@ -1,4 +1,4 @@
-export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "social" | "verify" | "custom_script";
+export type StepType = "info" | "timer" | "ad" | "discord" | "tip" | "social" | "verify" | "video" | "custom_script";
 
 export type IconKey =
   | "none"
@@ -14,7 +14,9 @@ export type IconKey =
   | "message"
   | "shield";
 
-export type BackgroundTheme = "solid" | "starfield" | "matrix" | "grid" | "nebula";
+export type BackgroundTheme = "solid" | "starfield" | "matrix" | "grid" | "nebula" | "aurora" | "particles";
+
+export type LayoutStyle = "wizard" | "stack";
 
 export interface GateStep {
   id: string;
@@ -46,6 +48,12 @@ export interface GateStep {
   // type: "custom_script" - for the user's own monetization script
   scriptUrl?: string;
   scriptInline?: string;
+
+  // type: "video" - shown as a small floating, draggable player. The step
+  // only unlocks once the video genuinely finishes playing (real ended/
+  // onStateChange event), not a fake timer.
+  videoUrl?: string;
+  videoSourceType?: "youtube" | "direct";
 
   // applies to "ad" | "discord" | "tip" | "social": an honest, visible wait
   // ("Continue in 18s") required after clicking the action link, before the
@@ -90,6 +98,11 @@ export interface Gate {
   // first one passes, and the destination link isn't sent until the second
   // one does.
   requireHumanCheck?: boolean;
+
+  // "wizard" (default) shows one step at a time. "stack" shows every step as
+  // a drawer-style list - completed ones collapse and stack up, the current
+  // one stays expanded, later ones stay locked/collapsed below.
+  layoutStyle?: LayoutStyle;
 }
 
 /** What the public gate page is allowed to see. Never includes destinationUrl. */
@@ -120,6 +133,8 @@ export interface SiteSettings {
    * step falls back to a simple auto-generated math question. */
   turnstileSiteKey?: string;
   turnstileSecretKey?: string;
+  /** Site-wide default layout - individual gates can override this. */
+  layoutStyle?: LayoutStyle;
 }
 
 /** What the public gate page actually receives from /api/settings. The
@@ -162,6 +177,7 @@ export function defaultSettings(): SiteSettings {
     quickLinks: [],
     turnstileSiteKey: "",
     turnstileSecretKey: "",
+    layoutStyle: "wizard",
   };
 }
 

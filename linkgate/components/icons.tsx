@@ -126,6 +126,36 @@ export function ShieldIcon(props: IconProps) {
   );
 }
 
+// The following are structural UI icons (stack layout state, video player
+// controls) rather than admin-selectable per-step icons, so they're exported
+// directly instead of being added to ICONS/IconKey.
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="M4 12.5l5 5L20 6" />
+    </Base>
+  );
+}
+
+export function LockIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </Base>
+  );
+}
+
+export function PauseIcon(props: IconProps) {
+  return (
+    <Base {...props}>
+      <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none" />
+      <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none" />
+    </Base>
+  );
+}
+
 type IconComponent = (props: IconProps) => React.JSX.Element;
 
 export const ICONS: Record<Exclude<IconKey, "none">, IconComponent> = {

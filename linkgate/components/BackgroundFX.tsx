@@ -137,6 +137,80 @@ function Nebula({ accent }: { accent: string }) {
   );
 }
 
+function Aurora({ accent }: { accent: string }) {
+  const style = {
+    "--aurora-color-1": hexToRgba(accent, 0.9),
+    "--aurora-color-2": "rgba(255,255,255,0.5)",
+  } as React.CSSProperties;
+  return (
+    <div className="bg-fx-aurora" style={style}>
+      <span className="band band-1" />
+      <span className="band band-2" />
+      <span className="band band-3" />
+    </div>
+  );
+}
+
+function Particles({ color }: { color: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    let raf = 0;
+    let particles: { x: number; y: number; r: number; vy: number; vx: number; alpha: number }[] = [];
+
+    function resize() {
+      canvas!.width = canvas!.clientWidth;
+      canvas!.height = canvas!.clientHeight;
+      const count = Math.max(16, Math.floor((canvas!.width * canvas!.height) / 32000));
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * canvas!.width,
+        y: Math.random() * canvas!.height,
+        r: Math.random() * 7 + 3,
+        vy: -(Math.random() * 0.22 + 0.05),
+        vx: (Math.random() - 0.5) * 0.15,
+        alpha: Math.random() * 0.28 + 0.08,
+      }));
+    }
+
+    function draw() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of particles) {
+        p.y += p.vy;
+        p.x += p.vx;
+        if (p.y < -20) {
+          p.y = canvas.height + 20;
+          p.x = Math.random() * canvas.width;
+        }
+        ctx.beginPath();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = color;
+        ctx.filter = "blur(1px)";
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.filter = "none";
+      raf = requestAnimationFrame(draw);
+    }
+
+    resize();
+    draw();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [color]);
+
+  return <canvas ref={ref} className="bg-fx-canvas" />;
+}
+
 export default function BackgroundFX({
   theme,
   accent,
@@ -157,6 +231,10 @@ export default function BackgroundFX({
       return <Grid accent={accent} />;
     case "nebula":
       return <Nebula accent={accent} />;
+    case "aurora":
+      return <Aurora accent={accent} />;
+    case "particles":
+      return <Particles color={accent} />;
     default:
       return null;
   }

@@ -10,6 +10,7 @@ const STEP_LABELS: Record<StepType, string> = {
   discord: "Join Discord",
   tip: "Tip to support",
   social: "Follow / subscribe / like",
+  video: "Watch a video",
   verify: "Human check (legacy - now a gate setting, see Security above)",
   custom_script: "Your own script (.js)",
 };
@@ -41,6 +42,8 @@ function defaultIconFor(type: StepType): IconKey {
       return "gift";
     case "social":
       return "userPlus";
+    case "video":
+      return "play";
     case "verify":
       return "shield";
     case "info":
@@ -79,6 +82,16 @@ function blankStep(type: StepType): GateStep {
         title: "Follow to continue",
         socialUrl: "",
         socialActionLabel: "Follow",
+      };
+    case "video":
+      return {
+        id,
+        type,
+        icon,
+        title: "Watch to continue",
+        description: "Watch the full video, then you can continue.",
+        videoUrl: "",
+        videoSourceType: "youtube",
       };
     case "verify":
       return {
@@ -193,7 +206,7 @@ export default function StepBuilder({
             </div>
           </div>
 
-          {(step.type === "info" || step.type === "timer" || step.type === "tip" || step.type === "verify") && (
+          {(step.type === "info" || step.type === "timer" || step.type === "tip" || step.type === "verify" || step.type === "video") && (
             <div className="field">
               <label className="field-label">Description (optional)</label>
               <input
@@ -305,6 +318,35 @@ export default function StepBuilder({
                   onChange={(e) => update(i, { socialActionLabel: e.target.value })}
                 />
               </div>
+            </>
+          )}
+
+          {step.type === "video" && (
+            <>
+              <div className="field">
+                <label className="field-label">Video URL</label>
+                <input
+                  className="input"
+                  placeholder="https://youtube.com/watch?v=... or a direct .mp4 link"
+                  value={step.videoUrl || ""}
+                  onChange={(e) => update(i, { videoUrl: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label">Source</label>
+                <select
+                  className="input"
+                  value={step.videoSourceType || "youtube"}
+                  onChange={(e) => update(i, { videoSourceType: e.target.value as "youtube" | "direct" })}
+                >
+                  <option value="youtube">YouTube</option>
+                  <option value="direct">Direct video file (.mp4 etc.)</option>
+                </select>
+              </div>
+              <p style={{ fontSize: "0.8rem" }}>
+                Shows as a small draggable floating player. The step only unlocks once the video
+                genuinely finishes - not a fake timer.
+              </p>
             </>
           )}
 

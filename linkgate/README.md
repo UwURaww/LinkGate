@@ -95,14 +95,42 @@ controlling the page could do.
 ## Customizing the look
 
 `/admin/settings` covers site name, tagline, logo, favicon, accent color,
-background color, corner style, and a default background theme (Solid,
-Starfield, Matrix rain, Energy grid, or Nebula) - no code edits needed. Each
-gate can also have its own banner (image, direct video URL, or YouTube link)
-and its own background theme override, via the gate editor.
+background color, corner style, a default background theme, and a default
+layout style - no code edits needed. Each gate can also override the
+background theme and layout style individually, and have its own banner
+(image, direct video URL, or YouTube link), via the gate editor.
+
+**Background themes:** Solid, Starfield (space), Matrix rain (code), Energy
+grid (stellar/void), Nebula, Aurora (flowing color waves), and Particles
+(floating boost-style dots).
+
+**Layout styles:**
+- **Wizard** (default) - one step at a time, same as before.
+- **Stack** - every step renders as a drawer-style list. Completed steps
+  collapse into a slim row with a checkmark and stay stacked at the top; the
+  current step stays expanded; later steps show locked and collapsed below.
+  The same single Continue/action button at the bottom still drives it - the
+  list just visually reorganizes itself as you go.
 
 Saved links (your YouTube channel, Discord server, Ko-fi, etc.) live in
 Settings too - add one once, then insert it into any step with one click
 instead of retyping it.
+
+## The "Watch a video" step
+
+Shows a small, draggable floating player over the checkpoint - drag it
+anywhere, tap the corner button to play/pause, tap the header's minimize
+button to shrink it to a pill without stopping playback. Works with a
+YouTube link (via YouTube's own IFrame Player API) or a direct video file
+URL (native `<video>` element).
+
+The step only unlocks on the real "video ended" event - YouTube's own
+`PlayerState.ENDED`, or the native `ended` event for a direct file - not a
+timer standing in for it. There's no scrub bar in the custom player chrome
+(reduces the easiest click-to-skip-ahead path), though as with every other
+part of this app, nothing client-side can be made truly bypass-proof against
+a script willing to reach into the page directly - see "Anti-bypass
+hardening" below for what that section's honesty framing already covers.
 
 ## Storage layout (and why)
 

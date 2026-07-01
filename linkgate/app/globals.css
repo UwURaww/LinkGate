@@ -661,3 +661,239 @@ textarea.input {
   height: 42px;
   padding: 0.25rem;
 }
+
+/* ---------- aurora background theme ---------- */
+
+.bg-fx-aurora {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-fx-aurora .band {
+  position: absolute;
+  width: 140%;
+  height: 60vh;
+  left: -20%;
+  filter: blur(50px);
+  opacity: 0.18;
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--aurora-color-1), var(--aurora-color-2), transparent);
+}
+
+.bg-fx-aurora .band-1 {
+  top: -10%;
+  animation: aurora-drift-1 20s ease-in-out infinite;
+}
+
+.bg-fx-aurora .band-2 {
+  top: 20%;
+  opacity: 0.14;
+  animation: aurora-drift-2 26s ease-in-out infinite reverse;
+}
+
+.bg-fx-aurora .band-3 {
+  top: 45%;
+  opacity: 0.1;
+  animation: aurora-drift-3 32s ease-in-out infinite;
+}
+
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50% { transform: translateX(6%) rotate(3deg); }
+}
+
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50% { transform: translateX(-8%) rotate(-4deg); }
+}
+
+@keyframes aurora-drift-3 {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50% { transform: translateX(5%) rotate(2deg); }
+}
+
+/* ---------- floating video player (challenge step) ---------- */
+
+.floating-video {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+  width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.floating-video.minimized {
+  width: auto;
+}
+
+.floating-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--panel-2);
+  cursor: grab;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  user-select: none;
+  touch-action: none;
+}
+
+.floating-video-header:active {
+  cursor: grabbing;
+}
+
+.floating-video-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.floating-video-toggle:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.floating-video-body {
+  position: relative;
+  width: 220px;
+  height: 124px;
+  background: #000;
+}
+
+.floating-video-body video,
+.floating-video-yt,
+.floating-video-yt iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: none;
+}
+
+.floating-video-fallback {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.floating-video-fallback p {
+  font-size: 0.75rem;
+}
+
+.floating-video-playpause {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.floating-video-progress {
+  height: 3px;
+  background: var(--border);
+}
+
+.floating-video-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+
+@media (max-width: 480px) {
+  .floating-video {
+    width: 168px;
+    right: 0.6rem;
+    bottom: 0.6rem;
+  }
+
+  .floating-video-body {
+    width: 168px;
+    height: 96px;
+  }
+}
+
+/* ---------- stack (drawer) layout ---------- */
+
+.stack-list {
+  margin-bottom: 1rem;
+}
+
+.stack-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+  background: var(--panel-2);
+}
+
+.stack-item.active {
+  border-color: var(--accent);
+  background: transparent;
+  padding: 1.1rem;
+}
+
+.stack-item.done {
+  opacity: 0.65;
+}
+
+.stack-item.locked {
+  opacity: 0.4;
+}
+
+.stack-item-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stack-item-summary svg:first-child {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.stack-item.locked .stack-item-summary svg:first-child {
+  color: var(--text-muted);
+}
+
+.stack-item-check,
+.stack-item-lock {
+  margin-left: auto;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.stack-item-check {
+  color: var(--success);
+}
+
+.stack-item-lock {
+  color: var(--text-muted);
+}
